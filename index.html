@@ -37,6 +37,9 @@
         .count-btn { width: 40px; height: 40px; margin: 0; font-weight: bold; font-size: 18px; }
         .count-display { font-size: 18px; font-weight: bold; min-width: 40px; text-align: center; }
 
+        /* 게임 상단 카드용 추가 스타일 */
+        .ingame-keyword-bar { background-color: #e3f2fd; border: 2px solid #2196f3; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 18px; font-weight: bold; color: #0d47a1; }
+
         #turn-announcement { font-size: 22px; font-weight: bold; color: #ff5722; margin: 10px 0; min-height: 33px; }
         #timer-display { font-size: 20px; font-weight: bold; color: #dc3545; margin-bottom: 10px; }
         #canvas-container { position: relative; margin: 10px 0; }
@@ -46,7 +49,6 @@
         .canvas-controls input[type="range"] { width: 100px; margin: 0; }
         .draw-actions { display: flex; gap: 10px; }
 
-        /* 투표 화면 전용 스타일 */
         .vote-list { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
         .vote-btn { background-color: #f8f9fa; color: #333; border: 2px solid #007bff; font-weight: bold; }
         .vote-btn:hover { background-color: #007bff; color: white; }
@@ -150,7 +152,7 @@
             <h2>역할 추첨</h2>
             <div id="roulette-box">추첨 준비 중...</div>
             <div id="role-result-box" style="display: none;">
-                <p>당신의 역할:</p>
+                <p id="my-role-title">당신의 역할:</p>
                 <div id="my-role" style="font-size: 26px; font-weight: bold; color: #007bff;"></div>
                 <div id="my-keyword" class="result-keyword"></div>
             </div>
@@ -158,6 +160,9 @@
 
         <!-- 7. 그림 그리기 및 순서 -->
         <div id="screen-drawing" class="screen">
+            <!-- 게임 중에도 제시어가 상단에 지속 표시됩니다 -->
+            <div id="ingame-keyword-display" class="ingame-keyword-bar"></div>
+
             <h2 id="turn-indicator">게임 진행 중</h2>
             <div id="timer-display">⏱️ 남은 시간: 240초</div>
             <div id="turn-announcement"></div>
@@ -228,6 +233,7 @@
         var currentSpies = [];
         var currentKeyword = "";
         var fakeKeyword = "";
+        var myDisplayKeyword = ""; // 플레이어가 게임 중에 화면 상단에서 볼 제시어
         var votesMap = {};
 
         var canvas, ctx;
@@ -484,7 +490,6 @@
             var words = wordDatabase[gameSettings.category];
             var selectedKeyword = words[Math.floor(Math.random() * words.length)];
             
-            // 바보 모드용 가짜 제시어 생성 (진짜 제시어와 다른 단어)
             var otherWords = words.filter(w => w !== selectedKeyword);
             var selectedFakeKeyword = otherWords[Math.floor(Math.random() * otherWords.length)];
 
@@ -515,11 +520,12 @@
             showScreen('screen-game');
             var rouletteBox = document.getElementById('roulette-box');
             var resultBox = document.getElementById('role-result-box');
+            var roleTitle = document.getElementById('my-role-title');
             
             rouletteBox.style.display = 'block';
             resultBox.style.display = 'none';
 
-            var items = ["라이어", "시민", "라이어", "시민"];
+            var items = ["추첨 중...", "단어 배정 중...", "역할 할당 중..."];
             var count = 0;
             var interval = setInterval(function() {
                 rouletteBox.innerText = items[Math.floor(Math.random() * items.length)];
@@ -534,28 +540,34 @@
                     var isSpy = currentSpies.includes(myName);
 
                     if (mode === "바보 모드") {
-                        // [바보 모드] 본인이 라이어여도 시민으로 표시하고 가짜 제시어 출력!
-                        document.getElementById('my-role').innerText = "시민";
-                        document.getElementById('my-role').style.color = "#28a745";
+                        // [바보 모드] 시민/라이어 타이틀을 표시하지 않음
+                        roleTitle.style.display = "none";
+                        document.getElementById('my-role').innerText = "";
                         
                         if (isLiar) {
-                            document.getElementById('my-keyword').innerText = "제시어: " + fakeKeyword;
+                            myDisplayKeyword = fakeKeyword;
                         } else {
-                            document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword;
+                            myDisplayKeyword = currentKeyword;
                         }
+                        document.getElementById('my-keyword').innerText = "제시어: " + myDisplayKeyword;
                     } else if (mode === "스파이 모드" && isSpy) {
+                        roleTitle.style.display = "block";
                         document.getElementById('my-role').innerText = "스파이";
                         document.getElementById('my-role').style.color = "#ff9800";
-                        document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword + " (라이어는 " + currentLiars.join(', ') + "님입니다!)";
+                        myDisplayKeyword = currentKeyword;
+                        document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword + " (라이어: " + currentLiars.join(', ') + ")";
                     } else {
                         // [일반 모드]
+                        roleTitle.style.display = "block";
                         if (isLiar) {
                             document.getElementById('my-role').innerText = "라이어";
                             document.getElementById('my-role').style.color = "#dc3545";
-                            document.getElementById('my-keyword').innerText = "제시어: ??? (당신은 라이어입니다!)";
+                            myDisplayKeyword = "??? (당신은 라이어입니다)";
+                            document.getElementById('my-keyword').innerText = "제시어: ???";
                         } else {
                             document.getElementById('my-role').innerText = "시민";
                             document.getElementById('my-role').style.color = "#28a745";
+                            myDisplayKeyword = currentKeyword;
                             document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword;
                         }
                     }
@@ -571,6 +583,9 @@
             turnsHistory = [];
             currentTurnIndex = 0;
             votesMap = {};
+
+            // 게임 진행 화면 상단에 나의 제시어 표출
+            document.getElementById('ingame-keyword-display').innerText = "📌 내 제시어: " + myDisplayKeyword;
 
             var myTurnNumber = playerOrder.indexOf(myName) + 1;
             var announceBox = document.getElementById('turn-announcement');
