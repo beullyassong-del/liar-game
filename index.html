@@ -35,30 +35,30 @@
     <div class="card">
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
-            <button onclick="showScreen('screen-create')">게임 만들기</button>
-            <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
+            <button onclick="window.showScreen('screen-create')">게임 만들기</button>
+            <button onclick="window.showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
-            <button onclick="createRoom()">방 생성하기</button>
-            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+            <button onclick="window.createRoom()">방 생성하기</button>
+            <button onclick="window.showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
             <input type="text" id="join-code" placeholder="방 코드 6자리 입력">
             <input type="text" id="join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="joinRoomByCode()">입장하기</button>
-            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+            <button onclick="window.joinRoomByCode()">입장하기</button>
+            <button onclick="window.showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
             <input type="text" id="link-join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="joinRoomByLink()">입장하기</button>
+            <button onclick="window.joinRoomByLink()">입장하기</button>
         </div>
 
         <div id="screen-lobby" class="screen">
@@ -72,7 +72,7 @@
                 <strong>초대 링크:</strong>
                 <div id="lobby-link" class="info-box"></div>
             </div>
-            <button onclick="copyLink()">초대 링크 복사</button>
+            <button onclick="window.copyLink()">초대 링크 복사</button>
         </div>
     </div>
 
@@ -96,20 +96,19 @@
 
             if (roomFromUrl) {
                 currentRoomCode = roomFromUrl.toUpperCase();
-                showScreen('screen-link-join');
+                window.showScreen('screen-link-join');
             }
         };
 
         window.showScreen = function(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
-        }
+        };
 
         function generateRoomCode() {
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        // 1. 방 만들기 (신규 방 생성)
         window.createRoom = function() {
             const name = document.getElementById('create-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
@@ -118,9 +117,8 @@
             currentRoomCode = generateRoomCode();
 
             enterRoom();
-        }
+        };
 
-        // 2. 코드로 방 참여 (방 존재 여부 검증)
         window.joinRoomByCode = async function() {
             const code = document.getElementById('join-code').value.trim().toUpperCase();
             const name = document.getElementById('join-name').value.trim();
@@ -128,43 +126,47 @@
             if (!code) return alert("방 코드를 입력해주세요!");
             if (!name) return alert("닉네임을 입력해주세요!");
 
-            // DB에 방이 실제로 존재하는지 확인
-            const roomRef = ref(database, 'rooms/' + code);
-            const snapshot = await get(roomRef);
+            try {
+                const roomRef = ref(database, 'rooms/' + code);
+                const snapshot = await get(roomRef);
 
-            if (!snapshot.exists()) {
-                alert("존재하지 않는 방 코드입니다. 코드를 다시 확인해주세요!");
-                return;
+                if (!snapshot.exists()) {
+                    alert("존재하지 않는 방 코드입니다. 코드를 다시 확인해주세요!");
+                    return;
+                }
+
+                currentRoomCode = code;
+                currentUserName = name;
+
+                enterRoom();
+            } catch (err) {
+                alert("연결 중 오류가 발생했습니다: " + err.message);
             }
+        };
 
-            currentRoomCode = code;
-            currentUserName = name;
-
-            enterRoom();
-        }
-
-        // 3. 링크로 방 참여 (방 존재 여부 검증)
         window.joinRoomByLink = async function() {
             const name = document.getElementById('link-join-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
 
-            // DB에 해당 방이 존재하는지 확인
-            const roomRef = ref(database, 'rooms/' + currentRoomCode);
-            const snapshot = await get(roomRef);
+            try {
+                const roomRef = ref(database, 'rooms/' + currentRoomCode);
+                const snapshot = await get(roomRef);
 
-            if (!snapshot.exists()) {
-                alert("만료되었거나 존재하지 않는 방 링크입니다.");
-                showScreen('screen-main');
-                return;
+                if (!snapshot.exists()) {
+                    alert("만료되었거나 존재하지 않는 방 링크입니다.");
+                    window.showScreen('screen-main');
+                    return;
+                }
+
+                currentUserName = name;
+                enterRoom();
+            } catch (err) {
+                alert("연결 중 오류가 발생했습니다: " + err.message);
             }
+        };
 
-            currentUserName = name;
-            enterRoom();
-        }
-
-        // 방 입장 처리 및 플레이어 등록
         function enterRoom() {
-            showScreen('screen-lobby');
+            window.showScreen('screen-lobby');
 
             const baseUrl = window.location.href.split('?')[0];
             const inviteUrl = `${baseUrl}?room=${currentRoomCode}`;
@@ -178,7 +180,6 @@
             const roomPlayersRef = ref(database, 'rooms/' + currentRoomCode + '/players');
             push(roomPlayersRef, currentUserName);
 
-            // 실시간 접속자 업데이트
             onValue(roomPlayersRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -207,7 +208,7 @@
             navigator.clipboard.writeText(linkText).then(() => {
                 alert("초대 링크가 복사되었습니다!");
             });
-        }
+        };
     </script>
 </body>
 </html>
