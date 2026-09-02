@@ -46,31 +46,31 @@
     <div class="card">
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
-            <button onclick="showScreen('screen-create')">게임 만들기</button>
-            <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
+            <button onclick="window.showScreen('screen-create')">게임 만들기</button>
+            <button onclick="window.showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <label>닉네임</label>
             <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
-            <button onclick="createRoom()">방 생성하기</button>
-            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+            <button id="btn-create-action" onclick="window.createRoom()">방 생성하기</button>
+            <button onclick="window.showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
             <input type="text" id="join-code" placeholder="방 코드 입력">
             <input type="text" id="join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="joinRoomByCode()">입장하기</button>
-            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+            <button id="btn-join-action" onclick="window.joinRoomByCode()">입장하기</button>
+            <button onclick="window.showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
             <input type="text" id="link-join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="joinRoomByLink()">입장하기</button>
+            <button id="btn-link-action" onclick="window.joinRoomByLink()">입장하기</button>
         </div>
 
         <div id="screen-lobby" class="screen">
@@ -80,7 +80,7 @@
                 <h3 style="margin-top: 0; font-size: 16px;">⚙️ 게임 설정</h3>
                 
                 <label>주제 선택</label>
-                <select id="setting-category" onchange="updateSettings()">
+                <select id="setting-category" onchange="window.updateSettings()">
                     <option value="동물">동물</option>
                     <option value="음식">음식</option>
                     <option value="인물">인물</option>
@@ -89,14 +89,14 @@
                 </select>
 
                 <label>게임 모드</label>
-                <select id="setting-mode" onchange="updateSettings()">
+                <select id="setting-mode" onchange="window.updateSettings()">
                     <option value="일반 모드">일반 모드</option>
                     <option value="바보 모드">바보 모드</option>
                     <option value="스파이 모드">스파이 모드</option>
                 </select>
 
                 <label>라이어 수</label>
-                <select id="setting-liar-count" onchange="updateSettings()">
+                <select id="setting-liar-count" onchange="window.updateSettings()">
                     <option value="1">1명</option>
                     <option value="2">2명</option>
                 </select>
@@ -113,8 +113,8 @@
 
             <div id="start-warning" class="error-message">⚠️ 플레이어가 3명 이상이어야 게임을 시작할 수 있습니다!</div>
 
-            <button onclick="copyLink()">초대 링크 복사</button>
-            <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
+            <button onclick="window.copyLink()">초대 링크 복사</button>
+            <button id="btn-start" onclick="window.startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
         </div>
 
         <div id="screen-game" class="screen">
@@ -146,17 +146,27 @@
             "애니": ["짱구는 못말려", "도라에몽", "원피스", "나루토", "귀멸의 칼날", "명탐정 코난", "포켓몬스터", "드래곤볼", "진격의 거인", "스파이 패밀리"]
         };
 
-        function showScreen(screenId) {
+        window.onload = function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var roomFromUrl = urlParams.get('room');
+
+            if (roomFromUrl) {
+                roomCode = roomFromUrl.toUpperCase();
+                window.showScreen('screen-link-join');
+            }
+        };
+
+        window.showScreen = function(screenId) {
             var screens = document.querySelectorAll('.screen');
             for (var i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
             document.getElementById(screenId).classList.add('active');
-        }
+        };
 
         function getRandomCode() {
             return Math.random().toString(36).substring(2, 7).toUpperCase();
         }
 
-        function createRoom() {
+        window.createRoom = function() {
             var name = document.getElementById('create-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
 
@@ -164,33 +174,207 @@
             roomCode = getRandomCode();
             isHost = true;
 
-            peer = new Peer('liar-room-' + roomCode);
+            try {
+                peer = new Peer('liar-room-' + roomCode);
 
-            peer.on('open', function() {
-                playersMap[myName] = true;
-                enterLobby();
-            });
-
-            peer.on('connection', function(conn) {
-                connections.push(conn);
-                conn.on('data', function(data) {
-                    if (data.type === 'JOIN') {
-                        playersMap[data.name] = true;
-                        broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
-                    }
+                peer.on('open', function() {
+                    playersMap[myName] = true;
+                    enterLobby();
                 });
-            });
 
-            peer.on('error', function(err) { alert("방 생성 에러: " + err.type); });
-        }
+                peer.on('connection', function(conn) {
+                    connections.push(conn);
+                    conn.on('data', function(data) {
+                        if (data.type === 'JOIN') {
+                            playersMap[data.name] = true;
+                            broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
+                        }
+                    });
+                });
 
-        function joinRoomByCode() {
+                peer.on('error', function(err) { 
+                    alert("통신 연결 실패 (" + err.type + "). 잠시 후 다시 시도해 주세요."); 
+                });
+            } catch (e) {
+                alert("라이브러리 로딩 실패. 페이지를 새로고침 해보세요.");
+            }
+        };
+
+        window.joinRoomByCode = function() {
             var code = document.getElementById('join-code').value.trim().toUpperCase();
             var name = document.getElementById('join-name').value.trim();
             if (!code || !name) return alert("방 코드와 닉네임을 모두 입력해주세요!");
             roomCode = code; myName = name; connectToHost();
+        };
+
+        window.joinRoomByLink = function() {
+            var name = document.getElementById('link-join-name').value.trim();
+            if (!name) return alert("닉네임을 입력해주세요!");
+            myName = name; connectToHost();
+        };
+
+        function connectToHost() {
+            try {
+                peer = new Peer();
+                peer.on('open', function() {
+                    var conn = peer.connect('liar-room-' + roomCode);
+                    conn.on('open', function() {
+                        conn.send({ type: 'JOIN', name: myName });
+                        enterLobby();
+                    });
+                    conn.on('data', function(data) {
+                        if (data.type === 'SYNC') {
+                            playersMap = data.players;
+                            gameSettings = data.settings;
+                            applySettingsUI();
+                            renderPlayers();
+                        } else if (data.type === 'START_GAME_INFO') {
+                            var myRole = data.liars.includes(myName) ? "라이어" : "시민";
+                            handleGameStart(myRole, data.keyword, data.mode);
+                        }
+                    });
+                });
+                peer.on('error', function() { alert("방 접속 실패! 코드가 올바른지 확인해주세요."); });
+            } catch (e) {
+                alert("연결 중 에러가 발생했습니다. 새로고침 후 다시 시도해주세요.");
+            }
         }
 
-        function joinRoomByLink() {
-            var name = document.getElementById('link-join-name').value.trim();
-            if
+        function enterLobby() {
+            window.showScreen('screen-lobby');
+            document.getElementById('header-bar').style.display = 'block';
+            document.getElementById('display-room-code').innerText = roomCode;
+            document.getElementById('lobby-code').innerText = roomCode;
+            document.getElementById('lobby-link').innerText = window.location.href.split('?')[0] + '?room=' + roomCode;
+            document.getElementById('connection-status').innerText = isHost ? "● 방장" : "● 참여 완료";
+
+            var categorySelect = document.getElementById('setting-category');
+            var modeSelect = document.getElementById('setting-mode');
+            var liarSelect = document.getElementById('setting-liar-count');
+
+            if (isHost) {
+                document.getElementById('btn-start').style.display = 'block';
+                categorySelect.disabled = false;
+                modeSelect.disabled = false;
+                liarSelect.disabled = false;
+            } else {
+                document.getElementById('btn-start').style.display = 'none';
+                categorySelect.disabled = true;
+                modeSelect.disabled = true;
+                liarSelect.disabled = true;
+            }
+
+            renderPlayers();
+        }
+
+        window.updateSettings = function() {
+            if (!isHost) return;
+            gameSettings.category = document.getElementById('setting-category').value;
+            gameSettings.mode = document.getElementById('setting-mode').value;
+            gameSettings.liarCount = parseInt(document.getElementById('setting-liar-count').value);
+
+            broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
+        };
+
+        function applySettingsUI() {
+            document.getElementById('setting-category').value = gameSettings.category;
+            document.getElementById('setting-mode').value = gameSettings.mode;
+            document.getElementById('setting-liar-count').value = gameSettings.liarCount;
+        }
+
+        function renderPlayers() {
+            var listDiv = document.getElementById('player-list');
+            listDiv.innerHTML = '';
+            var names = Object.keys(playersMap);
+            document.getElementById('player-count').innerText = names.length;
+
+            for (var i = 0; i < names.length; i++) {
+                var badge = document.createElement('span');
+                badge.className = 'player-badge';
+                badge.textContent = names[i];
+                listDiv.appendChild(badge);
+            }
+
+            if (names.length >= 3) {
+                document.getElementById('start-warning').style.display = 'none';
+            }
+        }
+
+        function broadcastData(data) {
+            renderPlayers();
+            for (var i = 0; i < connections.length; i++) {
+                if (connections[i].open) connections[i].send(data);
+            }
+        }
+
+        window.startGame = function() {
+            var playerNames = Object.keys(playersMap);
+            var warningBox = document.getElementById('start-warning');
+
+            if (playerNames.length < 3) {
+                warningBox.style.display = 'block';
+                return;
+            }
+
+            warningBox.style.display = 'none';
+
+            var words = wordDatabase[gameSettings.category];
+            var selectedKeyword = words[Math.floor(Math.random() * words.length)];
+            
+            var shuffledNames = [...playerNames].sort(() => 0.5 - Math.random());
+            var liars = shuffledNames.slice(0, gameSettings.liarCount);
+
+            var myRole = liars.includes(myName) ? "라이어" : "시민";
+            handleGameStart(myRole, selectedKeyword, gameSettings.mode);
+
+            broadcastData({ type: 'START_GAME_INFO', liars: liars, keyword: selectedKeyword, mode: gameSettings.mode });
+        };
+
+        function handleGameStart(role, keyword, mode) {
+            window.showScreen('screen-game');
+            var rouletteBox = document.getElementById('roulette-box');
+            var resultBox = document.getElementById('role-result-box');
+            
+            rouletteBox.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            var items = ["라이어", "시민", "라이어", "시민"];
+            
+            if (mode === "스파이 모드") {
+                items.push("스파이");
+            } else if (mode === "바보 모드") {
+                items.push("바보");
+            }
+
+            var count = 0;
+
+            var interval = setInterval(function() {
+                rouletteBox.innerText = items[Math.floor(Math.random() * items.length)];
+                count++;
+
+                if (count > 25) {
+                    clearInterval(interval);
+                    rouletteBox.style.display = 'none';
+                    resultBox.style.display = 'block';
+
+                    document.getElementById('my-role').innerText = role;
+                    if (role === "라이어") {
+                        document.getElementById('my-role').style.color = "#dc3545";
+                        document.getElementById('my-keyword').innerText = "제시어: ??? (당신은 라이어입니다!)";
+                    } else {
+                        document.getElementById('my-role').style.color = "#28a745";
+                        document.getElementById('my-keyword').innerText = "제시어: " + keyword;
+                    }
+                }
+            }, 100);
+        }
+
+        window.copyLink = function() {
+            var linkText = document.getElementById('lobby-link').innerText;
+            navigator.clipboard.writeText(linkText).then(function() {
+                alert("초대 링크가 복사되었습니다!");
+            });
+        };
+    </script>
+</body>
+</html>
