@@ -18,7 +18,6 @@
         button:hover { background-color: #0056b3; }
         button.secondary { background-color: #6c757d; }
         button.secondary:hover { background-color: #545b62; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
         
         input, select { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
         label { font-weight: bold; display: block; text-align: left; font-size: 14px; color: #555; }
@@ -28,9 +27,15 @@
         .info-box { background: #e9ecef; padding: 10px; border-radius: 6px; word-break: break-all; margin: 10px 0; font-size: 14px; }
         .status-text { color: #28a745; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
         
-        /* 랜덤 뽑기 연출 전용 스타일 */
+        /* 대기실 게임 설정 박스 */
+        .settings-box { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 15px; }
+        
+        /* 3인 미만 경고 메세지 스타일 */
+        .error-message { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 12px; border-radius: 6px; margin: 10px 0; font-weight: bold; display: none; }
+
+        /* 뽑기 연출 스타일 */
         #roulette-box { font-size: 28px; font-weight: bold; color: #dc3545; padding: 20px; border: 3px dashed #007bff; border-radius: 10px; margin: 15px 0; background: #f8f9fa; }
-        .result-keyword { font-size: 24px; color: #28a745; margin-top: 10px; font-weight: bold; }
+        .result-keyword { font-size: 20px; color: #28a745; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -50,34 +55,11 @@
             <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
-        <!-- 방 만들기 화면 -->
+        <!-- 방 만들기 화면 (닉네임만 입력) -->
         <div id="screen-create" class="screen">
-            <h2>방 설정하기</h2>
+            <h2>방 만들기</h2>
             <label>닉네임</label>
             <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
-            
-            <label>주제 선택</label>
-            <select id="setting-category">
-                <option value="동물">동물</option>
-                <option value="음식">음식</option>
-                <option value="인물">인물</option>
-                <option value="게임">게임</option>
-                <option value="애니">애니메이션</option>
-            </select>
-
-            <label>게임 모드</label>
-            <select id="setting-mode">
-                <option value="일반 모드">일반 모드</option>
-                <option value="바보 모드">바보 모드</option>
-                <option value="스파이 모드">스파이 모드</option>
-            </select>
-
-            <label>라이어 수</label>
-            <select id="setting-liar-count">
-                <option value="1">1명</option>
-                <option value="2">2명</option>
-            </select>
-
             <button onclick="createRoom()">방 생성하기</button>
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
@@ -99,10 +81,37 @@
             <button onclick="joinRoomByLink()">입장하기</button>
         </div>
 
-        <!-- 대기실 화면 -->
+        <!-- 대기실 화면 (방 생성 후 여기서 설정) -->
         <div id="screen-lobby" class="screen">
             <h2>대기실</h2>
-            <div id="room-settings-info" style="text-align: left; background: #fff3cd; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 14px;"></div>
+
+            <!-- 게임 설정 영역 -->
+            <div class="settings-box">
+                <h3 style="margin-top: 0; font-size: 16px;">⚙️ 게임 설정</h3>
+                
+                <label>주제 선택</label>
+                <select id="setting-category" onchange="updateSettings()">
+                    <option value="동물">동물</option>
+                    <option value="음식">음식</option>
+                    <option value="인물">인물</option>
+                    <option value="게임">게임</option>
+                    <option value="애니">애니메이션</option>
+                </select>
+
+                <label>게임 모드</label>
+                <select id="setting-mode" onchange="updateSettings()">
+                    <option value="일반 모드">일반 모드</option>
+                    <option value="바보 모드">바보 모드</option>
+                    <option value="스파이 모드">스파이 모드</option>
+                </select>
+
+                <label>라이어 수</label>
+                <select id="setting-liar-count" onchange="updateSettings()">
+                    <option value="1">1명</option>
+                    <option value="2">2명</option>
+                </select>
+            </div>
+
             <div>
                 <strong>방 코드:</strong>
                 <div id="lobby-code" class="info-box"></div>
@@ -111,8 +120,12 @@
                 <strong>초대 링크:</strong>
                 <div id="lobby-link" class="info-box"></div>
             </div>
+
+            <!-- 화면용 경고 메시지 영역 -->
+            <div id="start-warning" class="error-message">⚠️ 플레이어가 3명 이상이어야 게임을 시작할 수 있습니다!</div>
+
             <button onclick="copyLink()">초대 링크 복사</button>
-            <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 15px;">게임 시작하기</button>
+            <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
         </div>
 
         <!-- 게임 진행 화면 -->
@@ -135,10 +148,8 @@
         var playersMap = {};
         var isHost = false;
 
-        // 방 설정 데이터
         var gameSettings = { category: "동물", mode: "일반 모드", liarCount: 1 };
 
-        // 주제별 단어 데이터
         var wordDatabase = {
             "동물": ["사자", "호랑이", "코끼리", "기린", "펭귄", "강아지", "고양이", "토끼", "판다", "독수리"],
             "음식": ["떡볶이", "비빔밥", "삼겹살", "치킨", "피자", "짜장면", "초밥", "햄버거", "파스타", "족발"],
@@ -165,11 +176,6 @@
             roomCode = getRandomCode();
             isHost = true;
 
-            // 방 설정 저장
-            gameSettings.category = document.getElementById('setting-category').value;
-            gameSettings.mode = document.getElementById('setting-mode').value;
-            gameSettings.liarCount = parseInt(document.getElementById('setting-liar-count').value);
-
             peer = new Peer('liar-room-' + roomCode);
 
             peer.on('open', function() {
@@ -187,9 +193,7 @@
                 });
             });
 
-            peer.on('error', function(err) {
-                alert("방 생성 오류: " + err.type);
-            });
+            peer.on('error', function(err) { alert("방 생성 에러: " + err.type); });
         }
 
         function joinRoomByCode() {
@@ -217,10 +221,11 @@
                     if (data.type === 'SYNC') {
                         playersMap = data.players;
                         gameSettings = data.settings;
-                        updateSettingsDisplay();
+                        applySettingsUI();
                         renderPlayers();
-                    } else if (data.type === 'START_GAME') {
-                        handleGameStart(data.role, data.keyword);
+                    } else if (data.type === 'START_GAME_INFO') {
+                        var myRole = data.liars.includes(myName) ? "라이어" : "시민";
+                        handleGameStart(myRole, data.keyword);
                     }
                 });
             });
@@ -235,14 +240,40 @@
             document.getElementById('lobby-link').innerText = window.location.href.split('?')[0] + '?room=' + roomCode;
             document.getElementById('connection-status').innerText = isHost ? "● 방장" : "● 참여 완료";
 
-            if (isHost) document.getElementById('btn-start').style.display = 'block';
-            updateSettingsDisplay();
+            var categorySelect = document.getElementById('setting-category');
+            var modeSelect = document.getElementById('setting-mode');
+            var liarSelect = document.getElementById('setting-liar-count');
+
+            if (isHost) {
+                document.getElementById('btn-start').style.display = 'block';
+                categorySelect.disabled = false;
+                modeSelect.disabled = false;
+                liarSelect.disabled = false;
+            } else {
+                document.getElementById('btn-start').style.display = 'none';
+                categorySelect.disabled = true;
+                modeSelect.disabled = true;
+                liarSelect.disabled = true;
+            }
+
             renderPlayers();
         }
 
-        function updateSettingsDisplay() {
-            document.getElementById('room-settings-info').innerHTML = 
-                `<b>[게임 설정]</b><br>주제: ${gameSettings.category} | 모드: ${gameSettings.mode} | 라이어: ${gameSettings.liarCount}명`;
+        // 방장이 설정 변경 시 호출
+        function updateSettings() {
+            if (!isHost) return;
+            gameSettings.category = document.getElementById('setting-category').value;
+            gameSettings.mode = document.getElementById('setting-mode').value;
+            gameSettings.liarCount = parseInt(document.getElementById('setting-liar-count').value);
+
+            broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
+        }
+
+        // 일반 참여자에게 변경된 설정 UI 반영
+        function applySettingsUI() {
+            document.getElementById('setting-category').value = gameSettings.category;
+            document.getElementById('setting-mode').value = gameSettings.mode;
+            document.getElementById('setting-liar-count').value = gameSettings.liarCount;
         }
 
         function renderPlayers() {
@@ -257,6 +288,11 @@
                 badge.textContent = names[i];
                 listDiv.appendChild(badge);
             }
+
+            // 인원이 3명 이상 되면 경고 문구 숨김
+            if (names.length >= 3) {
+                document.getElementById('start-warning').style.display = 'none';
+            }
         }
 
         function broadcastData(data) {
@@ -266,65 +302,34 @@
             }
         }
 
-        // 게임 시작 처리 (방장 전용)
+        // 게임 시작 실행
         function startGame() {
             var playerNames = Object.keys(playersMap);
-            
-            // 1. 3명 이상 제한
+            var warningBox = document.getElementById('start-warning');
+
+            // 3명 미만일 시 화면 내 경고 메시지 출력
             if (playerNames.length < 3) {
-                return alert("게임을 시작하려면 최소 3명 이상이어야 합니다!");
+                warningBox.style.display = 'block';
+                return;
             }
 
-            // 2. 단어 및 라이어 선정
+            warningBox.style.display = 'none';
+
             var words = wordDatabase[gameSettings.category];
             var selectedKeyword = words[Math.floor(Math.random() * words.length)];
             
-            // 라이어 수만큼 랜덤 지정
             var shuffledNames = [...playerNames].sort(() => 0.5 - Math.random());
             var liars = shuffledNames.slice(0, gameSettings.liarCount);
 
-            // 방장 본인 역할 세팅 및 시작 broadcast
+            // 방장 처리
             var myRole = liars.includes(myName) ? "라이어" : "시민";
             handleGameStart(myRole, selectedKeyword);
 
-            for (var i = 0; i < connections.length; i++) {
-                var conn = connections[i];
-                // 각 연결된 참가자 이름 탐색 후 역할 전송
-                // (간단화를 위해 각 클라이언트에 전송)
-            }
-
-            connections.forEach(conn => {
-                // 각 참여자에게 맞는 역할 할당을 전달
-                // 무작위로 매칭된 라이어 정보 전송
-                conn.send({ type: 'START_GAME_INFO', liars: liars, keyword: selectedKeyword });
-            });
+            // 게스트 처리
+            broadcastData({ type: 'START_GAME_INFO', liars: liars, keyword: selectedKeyword });
         }
 
-        // PeerJS 메시지 핸들러 확장
-        function connectToHost() {
-            peer = new Peer();
-            peer.on('open', function() {
-                var conn = peer.connect('liar-room-' + roomCode);
-                conn.on('open', function() {
-                    conn.send({ type: 'JOIN', name: myName });
-                    enterLobby();
-                });
-                conn.on('data', function(data) {
-                    if (data.type === 'SYNC') {
-                        playersMap = data.players;
-                        gameSettings = data.settings;
-                        updateSettingsDisplay();
-                        renderPlayers();
-                    } else if (data.type === 'START_GAME_INFO') {
-                        var myRole = data.liars.includes(myName) ? "라이어" : "시민";
-                        handleGameStart(myRole, data.keyword);
-                    }
-                });
-            });
-            peer.on('error', function() { alert("방 접속 실패! 코드를 확인해주세요."); });
-        }
-
-        // 3. 역할 뽑기 애니메이션 연출
+        // 뽑기 연출 및 결과 출력
         function handleGameStart(role, keyword) {
             showScreen('screen-game');
             var rouletteBox = document.getElementById('roulette-box');
@@ -336,12 +341,11 @@
             var items = ["라이어", "시민", "라이어", "시민", "스파이"];
             var count = 0;
 
-            // 슬롯머신처럼 글자가 바뀌는 연출
             var interval = setInterval(function() {
                 rouletteBox.innerText = items[Math.floor(Math.random() * items.length)];
                 count++;
 
-                if (count > 25) { // 2.5초 후 멈춤
+                if (count > 25) {
                     clearInterval(interval);
                     rouletteBox.style.display = 'none';
                     resultBox.style.display = 'block';
