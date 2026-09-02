@@ -38,12 +38,22 @@
         .count-display { font-size: 18px; font-weight: bold; min-width: 40px; text-align: center; }
 
         #turn-announcement { font-size: 22px; font-weight: bold; color: #ff5722; margin: 10px 0; min-height: 33px; }
+        #timer-display { font-size: 20px; font-weight: bold; color: #dc3545; margin-bottom: 10px; }
         #canvas-container { position: relative; margin: 10px 0; }
         canvas { border: 2px solid #333; border-radius: 8px; background: white; cursor: crosshair; touch-action: none; }
         .canvas-controls { display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 10px; }
         .canvas-controls input[type="color"] { width: 40px; height: 40px; padding: 0; border: none; cursor: pointer; }
         .canvas-controls input[type="range"] { width: 100px; margin: 0; }
         .draw-actions { display: flex; gap: 10px; }
+
+        /* 투표 화면 전용 스타일 */
+        .vote-list { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
+        .vote-btn { background-color: #f8f9fa; color: #333; border: 2px solid #007bff; font-weight: bold; }
+        .vote-btn:hover { background-color: #007bff; color: white; }
+        .vote-btn.selected { background-color: #28a745; color: white; border-color: #28a745; }
+        .result-box { padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 18px; font-weight: bold; }
+        .win { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .lose { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     </style>
 </head>
 <body>
@@ -56,12 +66,14 @@
     </div>
 
     <div class="card">
+        <!-- 1. 메인 화면 -->
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
             <button onclick="showScreen('screen-create')">게임 만들기</button>
             <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
+        <!-- 2. 방 생성 -->
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <label>닉네임</label>
@@ -70,6 +82,7 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
+        <!-- 3. 방 참여 (코드) -->
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
             <input type="text" id="join-code" placeholder="방 코드 입력">
@@ -78,6 +91,7 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
+        <!-- 4. 방 참여 (링크) -->
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
@@ -85,6 +99,7 @@
             <button onclick="joinRoomByLink()">입장하기</button>
         </div>
 
+        <!-- 5. 대기실 -->
         <div id="screen-lobby" class="screen">
             <h2>대기실</h2>
 
@@ -130,6 +145,7 @@
             <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
         </div>
 
+        <!-- 6. 역할 추첨 -->
         <div id="screen-game" class="screen">
             <h2>역할 추첨</h2>
             <div id="roulette-box">추첨 준비 중...</div>
@@ -140,8 +156,10 @@
             </div>
         </div>
 
+        <!-- 7. 그림 그리기 및 순서 -->
         <div id="screen-drawing" class="screen">
             <h2 id="turn-indicator">게임 진행 중</h2>
+            <div id="timer-display">⏱️ 남은 시간: 240초</div>
             <div id="turn-announcement"></div>
 
             <div class="canvas-controls">
@@ -159,7 +177,30 @@
                 <button class="secondary" onclick="resetMyStroke()">다시 그리기</button>
                 <button style="background-color: #28a745;" onclick="finishMyTurn()">그만 (다음 턴)</button>
             </div>
+            
+            <button onclick="requestEarlyVote()" style="background-color: #ff9800; margin-top: 10px;">🗳️ 지금 바로 투표하기</button>
         </div>
+
+        <!-- 8. 투표 화면 -->
+        <div id="screen-vote" class="screen">
+            <h2>🗳️ 라이어 투표</h2>
+            <p>누가 라이어인지 선택해주세요!</p>
+            <div id="vote-player-list" class="vote-list"></div>
+            <div id="vote-status" style="margin-top: 10px; color: #666;">투표 진행 중...</div>
+        </div>
+
+        <!-- 9. 게임 결과 및 다시하기 -->
+        <div id="screen-result" class="screen">
+            <h2>🎉 게임 결과</h2>
+            <div id="result-box-ui" class="result-box"></div>
+            <div style="text-align: left; margin: 15px 0;">
+                <p><strong>진짜 라이어:</strong> <span id="actual-liars" style="color:#dc3545;"></span></p>
+                <p><strong>제시어:</strong> <span id="actual-keyword" style="color:#28a745;"></span></p>
+            </div>
+            <button id="btn-restart" onclick="restartGame()" style="background-color: #28a745; display: none;">🔄 다시하기 (대기실로)</button>
+            <p id="restart-wait-text" style="color: #666;">방장이 다시하기를 누를 때까지 기다려주세요...</p>
+        </div>
+
     </div>
 
     <script>
@@ -180,6 +221,13 @@
         var currentStroke = [];
         var turnsHistory = [];
 
+        // 타이머 및 투표 관련 변수
+        var gameTimer = null;
+        var timeLeft = 240;
+        var currentLiars = [];
+        var currentKeyword = "";
+        var votesMap = {}; // { targetName: count }
+
         var canvas, ctx;
 
         var wordDatabase = {
@@ -194,7 +242,17 @@
             canvas = document.getElementById('game-canvas');
             ctx = canvas.getContext('2d');
             setupCanvasEvents();
+            checkLinkJoin();
         };
+
+        function checkLinkJoin() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var room = urlParams.get('room');
+            if (room) {
+                roomCode = room.toUpperCase();
+                showScreen('screen-link-join');
+            }
+        }
 
         function showScreen(screenId) {
             var screens = document.querySelectorAll('.screen');
@@ -260,14 +318,14 @@
 
         function sendData(data) {
             if (isHost) {
-                handleNetworkData(data); // 방장은 본인 데이터 직접 처리
+                handleNetworkData(data);
             } else if (hostConn && hostConn.open) {
                 hostConn.send(data);
             }
         }
 
         function handleNetworkData(data) {
-            // --- [방장(Host) 전용 상태 처리] ---
+            // --- [방장(Host) 권한 처리] ---
             if (isHost) {
                 if (data.type === 'JOIN') {
                     playersMap[data.name] = true;
@@ -276,34 +334,44 @@
                     return;
                 }
                 if (data.type === 'REQ_NEXT_TURN') {
-                    // 클라이언트에서 턴 종료 요청 시 방장이 권한을 갖고 계산
                     if (data.stroke && data.stroke.length > 0) {
                         turnsHistory.push({ player: data.player, path: data.stroke });
                     }
                     currentTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
                     
-                    var syncPayload = { 
-                        type: 'SYNC_TURNS', 
-                        history: turnsHistory, 
-                        turnIndex: currentTurnIndex 
-                    };
+                    var syncPayload = { type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex };
                     broadcastData(syncPayload);
-                    handleNetworkData(syncPayload); // 방장 자신 화면 업데이트
+                    handleNetworkData(syncPayload);
                     return;
                 }
                 if (data.type === 'REQ_RESET_STROKE') {
                     currentStroke = [];
-                    var syncPayload = { 
-                        type: 'SYNC_TURNS', 
-                        history: turnsHistory, 
-                        turnIndex: currentTurnIndex 
-                    };
+                    var syncPayload = { type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex };
                     broadcastData(syncPayload);
                     handleNetworkData(syncPayload);
                     return;
                 }
                 if (data.type === 'DRAW_LIVE') {
-                    broadcastData(data); // 라이브 그림선 전달 중계
+                    broadcastData(data);
+                }
+                if (data.type === 'REQ_START_VOTE') {
+                    clearInterval(gameTimer);
+                    var votePayload = { type: 'START_VOTE' };
+                    broadcastData(votePayload);
+                    handleNetworkData(votePayload);
+                    return;
+                }
+                if (data.type === 'SUBMIT_VOTE') {
+                    votesMap[data.target] = (votesMap[data.target] || 0) + 1;
+                    
+                    // 전원 투표 완료 여부 검사
+                    var totalVotes = 0;
+                    for (var k in votesMap) totalVotes += votesMap[k];
+                    
+                    if (totalVotes >= Object.keys(playersMap).length) {
+                        calculateAndBroadcastResult();
+                    }
+                    return;
                 }
             }
 
@@ -315,17 +383,27 @@
                 renderPlayers();
             } else if (data.type === 'START_GAME_INFO') {
                 playerOrder = data.order;
-                var myRole = data.liars.includes(myName) ? "라이어" : "시민";
-                handleGameStart(myRole, data.keyword, data.mode);
+                currentLiars = data.liars;
+                currentKeyword = data.keyword;
+                var myRole = currentLiars.includes(myName) ? "라이어" : "시민";
+                handleGameStart(myRole, currentKeyword, data.mode);
+            } else if (data.type === 'TIMER_TICK') {
+                timeLeft = data.time;
+                document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
             } else if (data.type === 'DRAW_LIVE') {
-                if (data.sender !== myName) { // 본인 보낸 선 중복 출력 방지
-                    drawSegment(data.strokeData);
-                }
+                if (data.sender !== myName) drawSegment(data.strokeData);
             } else if (data.type === 'SYNC_TURNS') {
                 turnsHistory = data.history;
                 currentTurnIndex = data.turnIndex;
                 redrawCanvas();
                 updateTurnState();
+            } else if (data.type === 'START_VOTE') {
+                clearInterval(gameTimer);
+                openVoteScreen();
+            } else if (data.type === 'GAME_RESULT') {
+                renderGameResult(data.mostVoted, data.isCitizenWin);
+            } else if (data.type === 'GO_TO_LOBBY') {
+                enterLobby();
             }
         }
 
@@ -418,8 +496,6 @@
             playerOrder = [...playerNames].sort(() => 0.5 - Math.random());
             var liars = [...playerOrder].sort(() => 0.5 - Math.random()).slice(0, gameSettings.liarCount);
 
-            var myRole = liars.includes(myName) ? "라이어" : "시민";
-
             var startPayload = { 
                 type: 'START_GAME_INFO', 
                 liars: liars, 
@@ -473,6 +549,7 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             turnsHistory = [];
             currentTurnIndex = 0;
+            votesMap = {};
 
             var myTurnNumber = playerOrder.indexOf(myName) + 1;
             var announceBox = document.getElementById('turn-announcement');
@@ -481,7 +558,26 @@
             setTimeout(function() {
                 announceBox.innerText = "";
                 updateTurnState();
+                startTimer();
             }, 2500);
+        }
+
+        function startTimer() {
+            if (gameTimer) clearInterval(gameTimer);
+            timeLeft = 240;
+            document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
+
+            if (isHost) {
+                gameTimer = setInterval(function() {
+                    timeLeft--;
+                    broadcastData({ type: 'TIMER_TICK', time: timeLeft });
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(gameTimer);
+                        sendData({ type: 'REQ_START_VOTE' });
+                    }
+                }, 1000);
+            }
         }
 
         function updateTurnState() {
@@ -585,13 +681,99 @@
 
         function finishMyTurn() {
             if (playerOrder[currentTurnIndex] !== myName) return;
-            
-            // 방장에게 턴 종료 요청 전송
-            sendData({ 
-                type: 'REQ_NEXT_TURN', 
-                player: myName, 
-                stroke: currentStroke 
-            });
+            sendData({ type: 'REQ_NEXT_TURN', player: myName, stroke: currentStroke });
+        }
+
+        // --- [투표 기능] ---
+        function requestEarlyVote() {
+            if (confirm("지금 바로 투표를 시작하시겠습니까?")) {
+                sendData({ type: 'REQ_START_VOTE' });
+            }
+        }
+
+        function openVoteScreen() {
+            showScreen('screen-vote');
+            var container = document.getElementById('vote-player-list');
+            container.innerHTML = "";
+
+            var playerNames = Object.keys(playersMap);
+            for (var i = 0; i < playerNames.length; i++) {
+                var pName = playerNames[i];
+                var btn = document.createElement('button');
+                btn.className = "vote-btn";
+                btn.innerText = pName;
+                btn.onclick = (function(target) {
+                    return function() {
+                        submitMyVote(target, this);
+                    };
+                })(pName);
+                container.appendChild(btn);
+            }
+            document.getElementById('vote-status').innerText = "라이어로 의심되는 사람을 클릭하세요!";
+        }
+
+        function submitMyVote(targetName, btnElem) {
+            var allBtns = document.querySelectorAll('.vote-btn');
+            allBtns.forEach(b => b.disabled = true);
+            btnElem.classList.add('selected');
+            document.getElementById('vote-status').innerText = targetName + "님에게 투표했습니다. 다른 사람들을 기다리는 중...";
+
+            sendData({ type: 'SUBMIT_VOTE', voter: myName, target: targetName });
+        }
+
+        function calculateAndBroadcastResult() {
+            var mostVotedPlayer = "";
+            var maxVotes = -1;
+
+            for (var player in votesMap) {
+                if (votesMap[player] > maxVotes) {
+                    maxVotes = votesMap[player];
+                    mostVotedPlayer = player;
+                }
+            }
+
+            // 라이어를 제대로 맞췄는지 확인
+            var isCitizenWin = currentLiars.includes(mostVotedPlayer);
+
+            var resultPayload = {
+                type: 'GAME_RESULT',
+                mostVoted: mostVotedPlayer,
+                isCitizenWin: isCitizenWin
+            };
+
+            broadcastData(resultPayload);
+            handleNetworkData(resultPayload);
+        }
+
+        function renderGameResult(mostVoted, isCitizenWin) {
+            showScreen('screen-result');
+            var resultBox = document.getElementById('result-box-ui');
+
+            if (isCitizenWin) {
+                resultBox.className = "result-box win";
+                resultBox.innerText = "🎉 시민 승리! (" + mostVoted + "님은 라이어가 맞습니다!)";
+            } else {
+                resultBox.className = "result-box lose";
+                resultBox.innerText = "💀 라이어 승리! (" + mostVoted + "님은 라이어가 아닙니다!)";
+            }
+
+            document.getElementById('actual-liars').innerText = currentLiars.join(', ');
+            document.getElementById('actual-keyword').innerText = currentKeyword;
+
+            if (isHost) {
+                document.getElementById('btn-restart').style.display = 'block';
+                document.getElementById('restart-wait-text').style.display = 'none';
+            } else {
+                document.getElementById('btn-restart').style.display = 'none';
+                document.getElementById('restart-wait-text').style.display = 'block';
+            }
+        }
+
+        function restartGame() {
+            if (!isHost) return;
+            var restartPayload = { type: 'GO_TO_LOBBY' };
+            broadcastData(restartPayload);
+            handleNetworkData(restartPayload);
         }
 
         function copyLink() {
