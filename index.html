@@ -195,7 +195,8 @@
             <div id="result-box-ui" class="result-box"></div>
             <div style="text-align: left; margin: 15px 0;">
                 <p><strong>진짜 라이어:</strong> <span id="actual-liars" style="color:#dc3545;"></span></p>
-                <p><strong>제시어:</strong> <span id="actual-keyword" style="color:#28a745;"></span></p>
+                <p><strong>진짜 제시어:</strong> <span id="actual-keyword" style="color:#28a745;"></span></p>
+                <p id="fake-keyword-info" style="display:none;"><strong>라이어 가짜 제시어:</strong> <span id="actual-fake-keyword" style="color:#ff5722;"></span></p>
             </div>
             <button id="btn-restart" onclick="restartGame()" style="background-color: #28a745; display: none;">🔄 다시하기 (대기실로)</button>
             <p id="restart-wait-text" style="color: #666;">방장이 다시하기를 누를 때까지 기다려주세요...</p>
@@ -221,12 +222,13 @@
         var currentStroke = [];
         var turnsHistory = [];
 
-        // 타이머 및 투표 관련 변수
         var gameTimer = null;
         var timeLeft = 240;
         var currentLiars = [];
+        var currentSpies = [];
         var currentKeyword = "";
-        var votesMap = {}; // { targetName: count }
+        var fakeKeyword = "";
+        var votesMap = {};
 
         var canvas, ctx;
 
@@ -276,17 +278,11 @@
 
             peer = new Peer('liar-room-' + roomCode);
 
-            peer.on('open', function() {
-                enterLobby();
-            });
-
+            peer.on('open', function() { enterLobby(); });
             peer.on('connection', function(conn) {
                 connections.push(conn);
-                conn.on('data', function(data) {
-                    handleNetworkData(data);
-                });
+                conn.on('data', function(data) { handleNetworkData(data); });
             });
-
             peer.on('error', function(err) { alert("방 생성 에러: " + err.type); });
         }
 
@@ -325,7 +321,6 @@
         }
 
         function handleNetworkData(data) {
-            // --- [방장(Host) 권한 처리] ---
             if (isHost) {
                 if (data.type === 'JOIN') {
                     playersMap[data.name] = true;
@@ -338,7 +333,6 @@
                         turnsHistory.push({ player: data.player, path: data.stroke });
                     }
                     currentTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
-                    
                     var syncPayload = { type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex };
                     broadcastData(syncPayload);
                     handleNetworkData(syncPayload);
@@ -363,11 +357,8 @@
                 }
                 if (data.type === 'SUBMIT_VOTE') {
                     votesMap[data.target] = (votesMap[data.target] || 0) + 1;
-                    
-                    // 전원 투표 완료 여부 검사
                     var totalVotes = 0;
                     for (var k in votesMap) totalVotes += votesMap[k];
-                    
                     if (totalVotes >= Object.keys(playersMap).length) {
                         calculateAndBroadcastResult();
                     }
@@ -375,7 +366,6 @@
                 }
             }
 
-            // --- [모든 클라이언트 공통 데이터 수신] ---
             if (data.type === 'SYNC') {
                 playersMap = data.players;
                 gameSettings = data.settings;
@@ -384,9 +374,10 @@
             } else if (data.type === 'START_GAME_INFO') {
                 playerOrder = data.order;
                 currentLiars = data.liars;
+                currentSpies = data.spies || [];
                 currentKeyword = data.keyword;
-                var myRole = currentLiars.includes(myName) ? "라이어" : "시민";
-                handleGameStart(myRole, currentKeyword, data.mode);
+                fakeKeyword = data.fakeKeyword || "";
+                handleGameStart(data.mode);
             } else if (data.type === 'TIMER_TICK') {
                 timeLeft = data.time;
                 document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
@@ -493,13 +484,25 @@
             var words = wordDatabase[gameSettings.category];
             var selectedKeyword = words[Math.floor(Math.random() * words.length)];
             
+            // 바보 모드용 가짜 제시어 생성 (진짜 제시어와 다른 단어)
+            var otherWords = words.filter(w => w !== selectedKeyword);
+            var selectedFakeKeyword = otherWords[Math.floor(Math.random() * otherWords.length)];
+
             playerOrder = [...playerNames].sort(() => 0.5 - Math.random());
             var liars = [...playerOrder].sort(() => 0.5 - Math.random()).slice(0, gameSettings.liarCount);
 
+            var spies = [];
+            if (gameSettings.mode === "스파이 모드") {
+                var nonLiars = playerOrder.filter(p => !liars.includes(p));
+                spies = [nonLiars[Math.floor(Math.random() * nonLiars.length)]];
+            }
+
             var startPayload = { 
                 type: 'START_GAME_INFO', 
-                liars: liars, 
-                keyword: selectedKeyword, 
+                liars: liars,
+                spies: spies,
+                keyword: selectedKeyword,
+                fakeKeyword: selectedFakeKeyword,
                 mode: gameSettings.mode,
                 order: playerOrder
             };
@@ -508,7 +511,7 @@
             handleNetworkData(startPayload);
         }
 
-        function handleGameStart(role, keyword, mode) {
+        function handleGameStart(mode) {
             showScreen('screen-game');
             var rouletteBox = document.getElementById('roulette-box');
             var resultBox = document.getElementById('role-result-box');
@@ -517,9 +520,6 @@
             resultBox.style.display = 'none';
 
             var items = ["라이어", "시민", "라이어", "시민"];
-            if (mode === "스파이 모드") items.push("스파이");
-            else if (mode === "바보 모드") items.push("바보");
-
             var count = 0;
             var interval = setInterval(function() {
                 rouletteBox.innerText = items[Math.floor(Math.random() * items.length)];
@@ -530,13 +530,34 @@
                     rouletteBox.style.display = 'none';
                     resultBox.style.display = 'block';
 
-                    document.getElementById('my-role').innerText = role;
-                    if (role === "라이어") {
-                        document.getElementById('my-role').style.color = "#dc3545";
-                        document.getElementById('my-keyword').innerText = "제시어: ??? (당신은 라이어입니다!)";
-                    } else {
+                    var isLiar = currentLiars.includes(myName);
+                    var isSpy = currentSpies.includes(myName);
+
+                    if (mode === "바보 모드") {
+                        // [바보 모드] 본인이 라이어여도 시민으로 표시하고 가짜 제시어 출력!
+                        document.getElementById('my-role').innerText = "시민";
                         document.getElementById('my-role').style.color = "#28a745";
-                        document.getElementById('my-keyword').innerText = "제시어: " + keyword;
+                        
+                        if (isLiar) {
+                            document.getElementById('my-keyword').innerText = "제시어: " + fakeKeyword;
+                        } else {
+                            document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword;
+                        }
+                    } else if (mode === "스파이 모드" && isSpy) {
+                        document.getElementById('my-role').innerText = "스파이";
+                        document.getElementById('my-role').style.color = "#ff9800";
+                        document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword + " (라이어는 " + currentLiars.join(', ') + "님입니다!)";
+                    } else {
+                        // [일반 모드]
+                        if (isLiar) {
+                            document.getElementById('my-role').innerText = "라이어";
+                            document.getElementById('my-role').style.color = "#dc3545";
+                            document.getElementById('my-keyword').innerText = "제시어: ??? (당신은 라이어입니다!)";
+                        } else {
+                            document.getElementById('my-role').innerText = "시민";
+                            document.getElementById('my-role').style.color = "#28a745";
+                            document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword;
+                        }
                     }
 
                     setTimeout(initDrawingPhase, 3000);
@@ -684,7 +705,6 @@
             sendData({ type: 'REQ_NEXT_TURN', player: myName, stroke: currentStroke });
         }
 
-        // --- [투표 기능] ---
         function requestEarlyVote() {
             if (confirm("지금 바로 투표를 시작하시겠습니까?")) {
                 sendData({ type: 'REQ_START_VOTE' });
@@ -703,9 +723,7 @@
                 btn.className = "vote-btn";
                 btn.innerText = pName;
                 btn.onclick = (function(target) {
-                    return function() {
-                        submitMyVote(target, this);
-                    };
+                    return function() { submitMyVote(target, this); };
                 })(pName);
                 container.appendChild(btn);
             }
@@ -732,7 +750,6 @@
                 }
             }
 
-            // 라이어를 제대로 맞췄는지 확인
             var isCitizenWin = currentLiars.includes(mostVotedPlayer);
 
             var resultPayload = {
@@ -759,6 +776,14 @@
 
             document.getElementById('actual-liars').innerText = currentLiars.join(', ');
             document.getElementById('actual-keyword').innerText = currentKeyword;
+
+            var fakeInfo = document.getElementById('fake-keyword-info');
+            if (gameSettings.mode === "바보 모드") {
+                fakeInfo.style.display = "block";
+                document.getElementById('actual-fake-keyword').innerText = fakeKeyword;
+            } else {
+                fakeInfo.style.display = "none";
+            }
 
             if (isHost) {
                 document.getElementById('btn-restart').style.display = 'block';
