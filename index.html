@@ -33,12 +33,10 @@
         #roulette-box { font-size: 28px; font-weight: bold; color: #dc3545; padding: 20px; border: 3px dashed #007bff; border-radius: 10px; margin: 15px 0; background: #f8f9fa; }
         .result-keyword { font-size: 20px; color: #28a745; margin-top: 10px; font-weight: bold; }
 
-        /* 수량 조절 버튼 스타일 */
         .count-control { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
         .count-btn { width: 40px; height: 40px; margin: 0; font-weight: bold; font-size: 18px; }
         .count-display { font-size: 18px; font-weight: bold; min-width: 40px; text-align: center; }
 
-        /* 그림판 관련 스타일 */
         #turn-announcement { font-size: 22px; font-weight: bold; color: #ff5722; margin: 10px 0; min-height: 33px; }
         #canvas-container { position: relative; margin: 10px 0; }
         canvas { border: 2px solid #333; border-radius: 8px; background: white; cursor: crosshair; touch-action: none; }
@@ -58,14 +56,12 @@
     </div>
 
     <div class="card">
-        <!-- 메인 화면 -->
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
             <button onclick="showScreen('screen-create')">게임 만들기</button>
             <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
-        <!-- 방 생성 화면 -->
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <label>닉네임</label>
@@ -74,7 +70,6 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
-        <!-- 코드 참여 화면 -->
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
             <input type="text" id="join-code" placeholder="방 코드 입력">
@@ -83,7 +78,6 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
-        <!-- 링크 참여 화면 -->
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
@@ -91,7 +85,6 @@
             <button onclick="joinRoomByLink()">입장하기</button>
         </div>
 
-        <!-- 대기실 화면 -->
         <div id="screen-lobby" class="screen">
             <h2>대기실</h2>
 
@@ -137,7 +130,6 @@
             <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
         </div>
 
-        <!-- 역할 추첨 화면 -->
         <div id="screen-game" class="screen">
             <h2>역할 추첨</h2>
             <div id="roulette-box">추첨 준비 중...</div>
@@ -148,7 +140,6 @@
             </div>
         </div>
 
-        <!-- 그림 그리기 화면 (캔버스) -->
         <div id="screen-drawing" class="screen">
             <h2 id="turn-indicator">게임 진행 중</h2>
             <div id="turn-announcement"></div>
@@ -174,6 +165,7 @@
     <script>
         var peer = null;
         var connections = [];
+        var hostConn = null;
         var myName = "";
         var roomCode = "";
         var playersMap = {};
@@ -186,7 +178,7 @@
         var hasDrawnThisTurn = false;
         var isDrawing = false;
         var currentStroke = [];
-        var turnsHistory = []; // { player: string, path: Array }
+        var turnsHistory = [];
 
         var canvas, ctx;
 
@@ -231,7 +223,13 @@
 
             peer.on('connection', function(conn) {
                 connections.push(conn);
-                conn.on('data', handleNetworkData);
+                conn.on('data', function(data) {
+                    handleNetworkData(data);
+                    // Host가 모든 클라이언트에게 데이터 전송 (중계)
+                    if (data.type === 'DRAW_LIVE' || data.type === 'SYNC_TURNS') {
+                        broadcastData(data);
+                    }
+                });
             });
 
             peer.on('error', function(err) { alert("방 생성 에러: " + err.type); });
@@ -253,14 +251,22 @@
         function connectToHost() {
             peer = new Peer();
             peer.on('open', function() {
-                var conn = peer.connect('liar-room-' + roomCode);
-                conn.on('open', function() {
-                    conn.send({ type: 'JOIN', name: myName });
+                hostConn = peer.connect('liar-room-' + roomCode);
+                hostConn.on('open', function() {
+                    hostConn.send({ type: 'JOIN', name: myName });
                     enterLobby();
                 });
-                conn.on('data', handleNetworkData);
+                hostConn.on('data', handleNetworkData);
             });
             peer.on('error', function() { alert("방 접속 실패! 코드를 확인해주세요."); });
+        }
+
+        function sendData(data) {
+            if (isHost) {
+                broadcastData(data);
+            } else if (hostConn && hostConn.open) {
+                hostConn.send(data);
+            }
         }
 
         function handleNetworkData(data) {
@@ -353,7 +359,6 @@
         }
 
         function broadcastData(data) {
-            renderPlayers();
             for (var i = 0; i < connections.length; i++) {
                 if (connections[i].open) connections[i].send(data);
             }
@@ -424,7 +429,6 @@
             }, 100);
         }
 
-        // 그림판 진행 초기화
         function initDrawingPhase() {
             showScreen('screen-drawing');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -447,7 +451,10 @@
             
             var isMyTurn = (activePlayer === myName);
             document.getElementById('my-turn-controls').style.display = isMyTurn ? "flex" : "none";
+            
+            // 턴이 바뀌었을 때 그리기 권한 초기화
             hasDrawnThisTurn = false;
+            isDrawing = false;
             currentStroke = [];
         }
 
@@ -473,7 +480,7 @@
                 };
                 currentStroke.push(point);
                 drawSegment(point);
-                broadcastData({ type: 'DRAW_LIVE', strokeData: point });
+                sendData({ type: 'DRAW_LIVE', strokeData: point });
             }
 
             function moveDraw(e) {
@@ -487,13 +494,13 @@
                 };
                 currentStroke.push(point);
                 drawSegment(point);
-                broadcastData({ type: 'DRAW_LIVE', strokeData: point });
+                sendData({ type: 'DRAW_LIVE', strokeData: point });
             }
 
             function stopDraw() {
                 if (isDrawing) {
                     isDrawing = false;
-                    hasDrawnThisTurn = true; // 선 1개 작성 완료시 추가 조작 잠금
+                    hasDrawnThisTurn = true; // 본인의 획 작성이 완료되었음을 표시
                 }
             }
 
@@ -536,7 +543,7 @@
             hasDrawnThisTurn = false;
             currentStroke = [];
             redrawCanvas();
-            broadcastData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex });
+            sendData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex });
         }
 
         function finishMyTurn() {
@@ -544,12 +551,10 @@
             if (currentStroke.length > 0) {
                 turnsHistory.push({ player: myName, path: currentStroke });
             }
-            currentTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
+            var nextTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
             
-            redrawCanvas();
-            updateTurnState();
-            
-            broadcastData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex });
+            // 데이터 동기화 명령 발송
+            sendData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: nextTurnIndex });
         }
 
         function copyLink() {
