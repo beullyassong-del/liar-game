@@ -226,9 +226,6 @@
                 connections.push(conn);
                 conn.on('data', function(data) {
                     handleNetworkData(data);
-                    if (data.type === 'DRAW_LIVE' || data.type === 'SYNC_TURNS') {
-                        broadcastData(data);
-                    }
                 });
             });
 
@@ -263,18 +260,55 @@
 
         function sendData(data) {
             if (isHost) {
-                broadcastData(data);
+                handleNetworkData(data); // 방장은 본인 데이터 직접 처리
             } else if (hostConn && hostConn.open) {
                 hostConn.send(data);
             }
         }
 
         function handleNetworkData(data) {
-            if (data.type === 'JOIN' && isHost) {
-                playersMap[data.name] = true;
-                renderPlayers();
-                broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
-            } else if (data.type === 'SYNC') {
+            // --- [방장(Host) 전용 상태 처리] ---
+            if (isHost) {
+                if (data.type === 'JOIN') {
+                    playersMap[data.name] = true;
+                    renderPlayers();
+                    broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
+                    return;
+                }
+                if (data.type === 'REQ_NEXT_TURN') {
+                    // 클라이언트에서 턴 종료 요청 시 방장이 권한을 갖고 계산
+                    if (data.stroke && data.stroke.length > 0) {
+                        turnsHistory.push({ player: data.player, path: data.stroke });
+                    }
+                    currentTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
+                    
+                    var syncPayload = { 
+                        type: 'SYNC_TURNS', 
+                        history: turnsHistory, 
+                        turnIndex: currentTurnIndex 
+                    };
+                    broadcastData(syncPayload);
+                    handleNetworkData(syncPayload); // 방장 자신 화면 업데이트
+                    return;
+                }
+                if (data.type === 'REQ_RESET_STROKE') {
+                    currentStroke = [];
+                    var syncPayload = { 
+                        type: 'SYNC_TURNS', 
+                        history: turnsHistory, 
+                        turnIndex: currentTurnIndex 
+                    };
+                    broadcastData(syncPayload);
+                    handleNetworkData(syncPayload);
+                    return;
+                }
+                if (data.type === 'DRAW_LIVE') {
+                    broadcastData(data); // 라이브 그림선 전달 중계
+                }
+            }
+
+            // --- [모든 클라이언트 공통 데이터 수신] ---
+            if (data.type === 'SYNC') {
                 playersMap = data.players;
                 gameSettings = data.settings;
                 applySettingsUI();
@@ -284,7 +318,9 @@
                 var myRole = data.liars.includes(myName) ? "라이어" : "시민";
                 handleGameStart(myRole, data.keyword, data.mode);
             } else if (data.type === 'DRAW_LIVE') {
-                drawSegment(data.strokeData);
+                if (data.sender !== myName) { // 본인 보낸 선 중복 출력 방지
+                    drawSegment(data.strokeData);
+                }
             } else if (data.type === 'SYNC_TURNS') {
                 turnsHistory = data.history;
                 currentTurnIndex = data.turnIndex;
@@ -383,15 +419,17 @@
             var liars = [...playerOrder].sort(() => 0.5 - Math.random()).slice(0, gameSettings.liarCount);
 
             var myRole = liars.includes(myName) ? "라이어" : "시민";
-            handleGameStart(myRole, selectedKeyword, gameSettings.mode);
 
-            broadcastData({ 
+            var startPayload = { 
                 type: 'START_GAME_INFO', 
                 liars: liars, 
                 keyword: selectedKeyword, 
                 mode: gameSettings.mode,
                 order: playerOrder
-            });
+            };
+
+            broadcastData(startPayload);
+            handleNetworkData(startPayload);
         }
 
         function handleGameStart(role, keyword, mode) {
@@ -480,7 +518,7 @@
                 };
                 currentStroke.push(point);
                 drawSegment(point);
-                sendData({ type: 'DRAW_LIVE', strokeData: point });
+                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
             }
 
             function moveDraw(e) {
@@ -494,7 +532,7 @@
                 };
                 currentStroke.push(point);
                 drawSegment(point);
-                sendData({ type: 'DRAW_LIVE', strokeData: point });
+                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
             }
 
             function stopDraw() {
@@ -542,18 +580,18 @@
             if (playerOrder[currentTurnIndex] !== myName) return;
             hasDrawnThisTurn = false;
             currentStroke = [];
-            redrawCanvas();
-            sendData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex });
+            sendData({ type: 'REQ_RESET_STROKE' });
         }
 
         function finishMyTurn() {
             if (playerOrder[currentTurnIndex] !== myName) return;
-            if (currentStroke.length > 0) {
-                turnsHistory.push({ player: myName, path: currentStroke });
-            }
-            var nextTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
             
-            sendData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: nextTurnIndex });
+            // 방장에게 턴 종료 요청 전송
+            sendData({ 
+                type: 'REQ_NEXT_TURN', 
+                player: myName, 
+                stroke: currentStroke 
+            });
         }
 
         function copyLink() {
