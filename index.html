@@ -78,9 +78,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // 구글 무료 데이터베이스 설정
         const firebaseConfig = {
             databaseURL: "https://liar-game-demo-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
@@ -110,6 +109,7 @@
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
+        // 1. 방 만들기 (신규 방 생성)
         window.createRoom = function() {
             const name = document.getElementById('create-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
@@ -120,27 +120,49 @@
             enterRoom();
         }
 
-        window.joinRoomByCode = function() {
-            const code = document.getElementById('join-code').value.trim();
+        // 2. 코드로 방 참여 (방 존재 여부 검증)
+        window.joinRoomByCode = async function() {
+            const code = document.getElementById('join-code').value.trim().toUpperCase();
             const name = document.getElementById('join-name').value.trim();
 
             if (!code) return alert("방 코드를 입력해주세요!");
             if (!name) return alert("닉네임을 입력해주세요!");
 
-            currentRoomCode = code.toUpperCase();
+            // DB에 방이 실제로 존재하는지 확인
+            const roomRef = ref(database, 'rooms/' + code);
+            const snapshot = await get(roomRef);
+
+            if (!snapshot.exists()) {
+                alert("존재하지 않는 방 코드입니다. 코드를 다시 확인해주세요!");
+                return;
+            }
+
+            currentRoomCode = code;
             currentUserName = name;
 
             enterRoom();
         }
 
-        window.joinRoomByLink = function() {
+        // 3. 링크로 방 참여 (방 존재 여부 검증)
+        window.joinRoomByLink = async function() {
             const name = document.getElementById('link-join-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
 
+            // DB에 해당 방이 존재하는지 확인
+            const roomRef = ref(database, 'rooms/' + currentRoomCode);
+            const snapshot = await get(roomRef);
+
+            if (!snapshot.exists()) {
+                alert("만료되었거나 존재하지 않는 방 링크입니다.");
+                showScreen('screen-main');
+                return;
+            }
+
             currentUserName = name;
             enterRoom();
         }
 
+        // 방 입장 처리 및 플레이어 등록
         function enterRoom() {
             showScreen('screen-lobby');
 
@@ -153,11 +175,10 @@
             document.getElementById('header-bar').style.display = 'block';
             document.getElementById('display-room-code').innerText = currentRoomCode;
 
-            // 데이터베이스의 해당 방에 플레이어 이름 등록
             const roomPlayersRef = ref(database, 'rooms/' + currentRoomCode + '/players');
             push(roomPlayersRef, currentUserName);
 
-            // 데이터베이스 내용이 바뀌면(누가 들어오면) 자동으로 상단 이름 목록 갱신
+            // 실시간 접속자 업데이트
             onValue(roomPlayersRef, (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -171,7 +192,6 @@
             const listDiv = document.getElementById('player-list');
             listDiv.innerHTML = '';
             
-            // 중복 표시 방지
             const uniquePlayers = [...new Set(players)];
             
             uniquePlayers.forEach(player => {
