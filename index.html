@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그림 라이어 게임</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        
+        /* 상단 참가자 목록 바 */
+        #header-bar { width: 100%; max-width: 600px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        .player-badge { display: inline-block; background: #007bff; color: white; padding: 5px 12px; border-radius: 15px; margin: 3px; font-weight: bold; }
+
+        /* 메인 컨테이너 */
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h1 { margin-top: 0; color: #333; }
+        button { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 6px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        button:hover { background-color: #0056b3; }
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #545b62; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        
+        .screen { display: none; }
+        .active { display: block; }
+        .info-box { background: #e9ecef; padding: 10px; border-radius: 6px; word-break: break-all; margin: 10px 0; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div id="header-bar" style="display: none;">
+        <strong>방 코드: <span id="display-room-code"></span></strong>
+        <div style="margin-top: 10px;">참여 중인 사람:</div>
+        <div id="player-list"></div>
+    </div>
+
+    <div class="card">
+        <div id="screen-main" class="screen active">
+            <h1>그림 라이어 게임</h1>
+            <button onclick="showScreen('screen-create')">게임 만들기</button>
+            <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
+        </div>
+
+        <div id="screen-create" class="screen">
+            <h2>방 만들기</h2>
+            <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
+            <button onclick="createRoom()">방 생성하기</button>
+            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+        </div>
+
+        <div id="screen-join" class="screen">
+            <h2>방 참여하기</h2>
+            <input type="text" id="join-code" placeholder="방 코드 6자리 입력">
+            <input type="text" id="join-name" placeholder="닉네임을 입력하세요">
+            <button onclick="joinRoomByCode()">입장하기</button>
+            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+        </div>
+
+        <div id="screen-link-join" class="screen">
+            <h2>게임 참여하기</h2>
+            <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
+            <input type="text" id="link-join-name" placeholder="닉네임을 입력하세요">
+            <button onclick="joinRoomByLink()">입장하기</button>
+        </div>
+
+        <div id="screen-lobby" class="screen">
+            <h2>대기실</h2>
+            <p>친구들을 초대하세요!</p>
+            <div>
+                <strong>방 코드:</strong>
+                <div id="lobby-code" class="info-box"></div>
+            </div>
+            <div>
+                <strong>초대 링크:</strong>
+                <div id="lobby-link" class="info-box"></div>
+            </div>
+            <button onclick="copyLink()">초대 링크 복사</button>
+        </div>
+    </div>
+
+    <script>
+        let currentRoomCode = "";
+        let currentUserName = "";
+
+        // 페이지 로드 시 URL 매개변수 확인 (링크로 들어왔는지 체크)
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomFromUrl = urlParams.get('room');
+
+            if (roomFromUrl) {
+                currentRoomCode = roomFromUrl;
+                showScreen('screen-link-join');
+            }
+        };
+
+        // 화면 전환 함수
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // 랜던 방 코드 생성 (6자리)
+        function generateRoomCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        // 방 만들기 실행
+        function createRoom() {
+            const name = document.getElementById('create-name').value.trim();
+            if (!name) return alert("닉네임을 입력해주세요!");
+
+            currentUserName = name;
+            currentRoomCode = generateRoomCode();
+
+            enterLobby();
+        }
+
+        // 코드로 방 참여 실행
+        function joinRoomByCode() {
+            const code = document.getElementById('join-code').value.trim();
+            const name = document.getElementById('join-name').value.trim();
+
+            if (!code) return alert("방 코드를 입력해주세요!");
+            if (!name) return alert("닉네임을 입력해주세요!");
+
+            currentRoomCode = code.toUpperCase();
+            currentUserName = name;
+
+            enterLobby();
+        }
+
+        // 링크를 통해 들어왔을 때 방 참여 실행
+        function joinRoomByLink() {
+            const name = document.getElementById('link-join-name').value.trim();
+            if (!name) return alert("닉네임을 입력해주세요!");
+
+            currentUserName = name;
+            enterLobby();
+        }
+
+        // 대기실 입장 및 상단 이름 목록 업데이트
+        function enterLobby() {
+            showScreen('screen-lobby');
+
+            // 생성된 링크 안내
+            const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+            document.getElementById('lobby-code').innerText = currentRoomCode;
+            document.getElementById('lobby-link').innerText = inviteUrl;
+
+            // 상단 헤더 영역 활성화 및 사용자 이름 표시
+            document.getElementById('header-bar').style.display = 'block';
+            document.getElementById('display-room-code').innerText = currentRoomCode;
+
+            // 로컬 테스트용: 브라우저 세션에 저장하여 이름 표시
+            let players = JSON.parse(sessionStorage.getItem('room_' + currentRoomCode) || '[]');
+            if (!players.includes(currentUserName)) {
+                players.push(currentUserName);
+            }
+            sessionStorage.setItem('room_' + currentRoomCode, JSON.stringify(players));
+
+            renderPlayers(players);
+        }
+
+        // 상단 참가자 이름 렌더링
+        function renderPlayers(players) {
+            const listDiv = document.getElementById('player-list');
+            listDiv.innerHTML = '';
+            players.forEach(player => {
+                const badge = document.createElement('span');
+                badge.className = 'player-badge';
+                badge.innerText = player;
+                listDiv.appendChild(badge);
+            });
+        }
+
+        // 링크 복사 기능
+        function copyLink() {
+            const linkText = document.getElementById('lobby-link').innerText;
+            navigator.clipboard.writeText(linkText).then(() => {
+                alert("초대 링크가 클립보드에 복사되었습니다!");
+            });
+        }
+    </script>
+</body>
+</html>
