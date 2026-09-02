@@ -42,9 +42,22 @@
         #turn-announcement { font-size: 20px; font-weight: bold; color: #ff5722; margin: 5px 0; min-height: 28px; }
         #timer-display { font-size: 18px; font-weight: bold; color: #dc3545; margin-bottom: 5px; }
         
-        #canvas-container { position: relative; width: 100%; margin: 10px 0; touch-action: none; display: flex; justify-content: center; }
-        canvas { border: 3px solid #333; border-radius: 12px; background: white; cursor: crosshair; touch-action: none; width: 100%; max-width: 400px; height: auto; aspect-ratio: 1 / 1; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        /* 캔버스 래퍼 및 커서 영역 설정 */
+        #canvas-wrapper { position: relative; width: 100%; max-width: 400px; margin: 10px auto; touch-action: none; cursor: none; }
+        canvas { border: 3px solid #333; border-radius: 12px; background: white; touch-action: none; width: 100%; height: auto; aspect-ratio: 1 / 1; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; }
         
+        /* 마우스 따라다니는 동그라미 커서 */
+        #cursor-circle {
+            position: absolute;
+            pointer-events: none;
+            border: 2px dashed #000;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            box-shadow: 0 0 2px rgba(255,255,255,0.8);
+            z-index: 10;
+        }
+
         .canvas-controls { display: flex; flex-direction: column; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px; }
         .palette { display: flex; justify-content: center; gap: 8px; align-items: center; }
         .color-circle { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 3px rgba(0,0,0,0.4); }
@@ -183,14 +196,16 @@
                 </div>
                 <div class="tool-row">
                     <div class="size-picker">
-                        <span>원 크기</span>
-                        <input type="range" id="brush-size" min="4" max="30" value="12" style="width: 140px; margin: 0;">
+                        <span>두께</span>
+                        <input type="range" id="brush-size" min="2" max="30" value="6" style="width: 140px; margin: 0;" oninput="updateCursorSize()">
                     </div>
                 </div>
             </div>
 
-            <div id="canvas-container">
+            <!-- 캔버스 및 동그라미 커서 영역 -->
+            <div id="canvas-wrapper">
                 <canvas id="game-canvas" width="400" height="400"></canvas>
+                <div id="cursor-circle"></div>
             </div>
 
             <div class="draw-actions" id="my-turn-controls" style="display: none;">
@@ -251,7 +266,7 @@
         var myDisplayKeyword = "";
         var votesMap = {};
 
-        var canvas, ctx;
+        var canvas, ctx, wrapper, cursorCircle;
         var currentColor = "#000000";
 
         var wordDatabase = {
@@ -265,6 +280,9 @@
         window.onload = function() {
             canvas = document.getElementById('game-canvas');
             ctx = canvas.getContext('2d');
+            wrapper = document.getElementById('canvas-wrapper');
+            cursorCircle = document.getElementById('cursor-circle');
+
             setupCanvasEvents();
             checkLinkJoin();
         };
@@ -275,12 +293,25 @@
             var circles = document.querySelectorAll('.color-circle');
             circles.forEach(c => c.classList.remove('selected'));
             if(elem) elem.classList.add('selected');
+            updateCursorSize();
         }
 
         function customColorChange(picker) {
             currentColor = picker.value;
             var circles = document.querySelectorAll('.color-circle');
             circles.forEach(c => c.classList.remove('selected'));
+            updateCursorSize();
+        }
+
+        function updateCursorSize() {
+            var size = parseInt(document.getElementById('brush-size').value);
+            var rect = canvas.getBoundingClientRect();
+            var scale = rect.width / canvas.width;
+            var displaySize = size * scale * 2; 
+
+            cursorCircle.style.width = displaySize + 'px';
+            cursorCircle.style.height = displaySize + 'px';
+            cursorCircle.style.borderColor = currentColor;
         }
 
         function checkLinkJoin() {
@@ -418,7 +449,7 @@
                 timeLeft = data.time;
                 document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
             } else if (data.type === 'DRAW_LIVE') {
-                if (data.sender !== myName) drawCirclesAtPoint(data.strokeData);
+                if (data.sender !== myName) drawSegment(data.from, data.to, data.color, data.width);
             } else if (data.type === 'SYNC_TURNS') {
                 turnsHistory = data.history;
                 currentTurnIndex = data.turnIndex;
@@ -653,10 +684,13 @@
             hasDrawnThisTurn = false;
             isDrawing = false;
             currentStroke = [];
+            updateCursorSize();
         }
 
-        /* 획(선) 1개 제한 및 동그라미 입자 생성 로직 */
+        /* 캔버스 드로잉 및 커서 동그라미 처리 로직 */
         function setupCanvasEvents() {
+            var lastPos = null;
+
             function getPos(e) {
                 var rect = canvas.getBoundingClientRect();
                 var scaleX = canvas.width / rect.width;
@@ -667,47 +701,64 @@
 
                 return {
                     x: (clientX - rect.left) * scaleX,
-                    y: (clientY - rect.top) * scaleY
+                    y: (clientY - rect.top) * scaleY,
+                    cssX: clientX - rect.left,
+                    cssY: clientY - rect.top
                 };
             }
 
+            function updateCursorPosition(e) {
+                if (playerOrder[currentTurnIndex] !== myName || hasDrawnThisTurn) {
+                    cursorCircle.style.display = 'none';
+                    return;
+                }
+                var pos = getPos(e);
+                cursorCircle.style.display = 'block';
+                cursorCircle.style.left = pos.cssX + 'px';
+                cursorCircle.style.top = pos.cssY + 'px';
+            }
+
             function startDraw(e) {
-                // 한 번이라도 그렸거나 내 턴이 아니면 붓터치 자체를 금지 (선 1개 제한)
                 if (playerOrder[currentTurnIndex] !== myName || hasDrawnThisTurn) return;
                 
                 isDrawing = true;
                 var pos = getPos(e);
+                lastPos = { x: pos.x, y: pos.y };
                 currentStroke = [];
-                
-                var point = {
-                    x: pos.x, y: pos.y,
-                    color: currentColor,
-                    radius: parseInt(document.getElementById('brush-size').value)
-                };
-                currentStroke.push(point);
-                drawCirclesAtPoint(point);
-                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
+                updateCursorPosition(e);
             }
 
             function moveDraw(e) {
+                updateCursorPosition(e);
                 if (!isDrawing || hasDrawnThisTurn) return;
+
                 var pos = getPos(e);
-                var point = {
-                    x: pos.x, y: pos.y,
+                var width = parseInt(document.getElementById('brush-size').value);
+
+                drawSegment(lastPos, { x: pos.x, y: pos.y }, currentColor, width);
+
+                var segmentData = {
+                    from: lastPos,
+                    to: { x: pos.x, y: pos.y },
                     color: currentColor,
-                    radius: parseInt(document.getElementById('brush-size').value)
+                    width: width
                 };
-                currentStroke.push(point);
-                drawCirclesAtPoint(point);
-                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
+                currentStroke.push(segmentData);
+                sendData({ type: 'DRAW_LIVE', ...segmentData, sender: myName });
+
+                lastPos = { x: pos.x, y: pos.y };
             }
 
             function stopDraw() {
                 if (isDrawing) {
                     isDrawing = false;
-                    hasDrawnThisTurn = true; // 손을 떼는 순간 1회 그리기 완료 판정
+                    hasDrawnThisTurn = true; // 선 1개 그리기 완료시 추가 그리기 금지
+                    cursorCircle.style.display = 'none';
                 }
             }
+
+            wrapper.addEventListener('mouseenter', updateCursorPosition);
+            wrapper.addEventListener('mouseleave', function() { cursorCircle.style.display = 'none'; });
 
             canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mousemove', moveDraw);
@@ -718,30 +769,16 @@
             canvas.addEventListener('touchend', stopDraw);
         }
 
-        // 경로를 따라 퐁퐁 피어나는 동그라미(원)들을 그리는 함수
-        function drawCirclesAtPoint(pt) {
-            ctx.save();
-            var baseRadius = pt.radius;
-            
-            // 궤적 중앙 원
+        // 실제 캔버스 선 그리기
+        function drawSegment(from, to, color, width) {
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, baseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = pt.color;
-            ctx.fill();
-
-            // 주변으로 보글보글 퍼지는 작은 동그라미 입자들
-            for (var i = 0; i < 3; i++) {
-                var offsetX = (Math.random() - 0.5) * baseRadius * 2.5;
-                var offsetY = (Math.random() - 0.5) * baseRadius * 2.5;
-                var randomRadius = Math.max(1, baseRadius * (0.2 + Math.random() * 0.5));
-
-                ctx.beginPath();
-                ctx.arc(pt.x + offsetX, pt.y + offsetY, randomRadius, 0, Math.PI * 2);
-                ctx.fillStyle = pt.color;
-                ctx.globalAlpha = 0.5 + Math.random() * 0.5; // 투명도 랜덤 설정
-                ctx.fill();
-            }
-            ctx.restore();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x, to.y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
         }
 
         function redrawCanvas() {
@@ -749,7 +786,8 @@
             for (var i = 0; i < turnsHistory.length; i++) {
                 var stroke = turnsHistory[i].path;
                 for (var j = 0; j < stroke.length; j++) {
-                    drawCirclesAtPoint(stroke[j]);
+                    var seg = stroke[j];
+                    drawSegment(seg.from, seg.to, seg.color, seg.width);
                 }
             }
         }
