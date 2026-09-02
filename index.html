@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>그림 라이어 게임</title>
+    <!-- PeerJS 실시간 통신 라이브러리 (안전 버전) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
@@ -22,43 +24,45 @@
         .screen { display: none; }
         .active { display: block; }
         .info-box { background: #e9ecef; padding: 10px; border-radius: 6px; word-break: break-all; margin: 10px 0; font-size: 14px; }
+        .status-text { color: #28a745; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <div id="header-bar" style="display: none;">
         <strong>방 코드: <span id="display-room-code"></span></strong>
-        <div style="margin-top: 10px;">참여 중인 사람:</div>
+        <div id="connection-status" class="status-text">연결 중...</div>
+        <div>참여 중인 사람:</div>
         <div id="player-list"></div>
     </div>
 
     <div class="card">
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
-            <button onclick="window.showScreen('screen-create')">게임 만들기</button>
-            <button onclick="window.showScreen('screen-join')" class="secondary">게임 참여하기</button>
+            <button onclick="showScreen('screen-create')">게임 만들기</button>
+            <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
-            <button onclick="window.createRoom()">방 생성하기</button>
-            <button onclick="window.showScreen('screen-main')" class="secondary">뒤로가기</button>
+            <button onclick="createRoom()">방 생성하기</button>
+            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
-            <input type="text" id="join-code" placeholder="방 코드 6자리 입력">
+            <input type="text" id="join-code" placeholder="방 코드 입력">
             <input type="text" id="join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="window.joinRoomByCode()">입장하기</button>
-            <button onclick="window.showScreen('screen-main')" class="secondary">뒤로가기</button>
+            <button onclick="joinRoomByCode()">입장하기</button>
+            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
             <input type="text" id="link-join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="window.joinRoomByLink()">입장하기</button>
+            <button onclick="joinRoomByLink()">입장하기</button>
         </div>
 
         <div id="screen-lobby" class="screen">
@@ -72,143 +76,170 @@
                 <strong>초대 링크:</strong>
                 <div id="lobby-link" class="info-box"></div>
             </div>
-            <button onclick="window.copyLink()">초대 링크 복사</button>
+            <button onclick="copyLink()">초대 링크 복사</button>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-        const firebaseConfig = {
-            databaseURL: "https://liar-game-demo-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-
-        let currentRoomCode = "";
-        let currentUserName = "";
+    <script>
+        var peer = null;
+        var connections = [];
+        var myName = "";
+        var roomCode = "";
+        var playersMap = {};
 
         window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const roomFromUrl = urlParams.get('room');
+            var urlParams = new URLSearchParams(window.location.search);
+            var roomFromUrl = urlParams.get('room');
 
             if (roomFromUrl) {
-                currentRoomCode = roomFromUrl.toUpperCase();
-                window.showScreen('screen-link-join');
+                roomCode = roomFromUrl.toUpperCase();
+                showScreen('screen-link-join');
             }
         };
 
-        window.showScreen = function(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        function showScreen(screenId) {
+            var screens = document.querySelectorAll('.screen');
+            for (var i = 0; i < screens.length; i++) {
+                screens[i].classList.remove('active');
+            }
             document.getElementById(screenId).classList.add('active');
-        };
-
-        function generateRoomCode() {
-            return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
-        window.createRoom = function() {
-            const name = document.getElementById('create-name').value.trim();
+        function getRandomCode() {
+            return Math.random().toString(36).substring(2, 7).toUpperCase();
+        }
+
+        function createRoom() {
+            var name = document.getElementById('create-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
 
-            currentUserName = name;
-            currentRoomCode = generateRoomCode();
+            myName = name;
+            roomCode = getRandomCode();
 
-            enterRoom();
-        };
+            // 방장으로 Peer 생성
+            peer = new Peer('liar-room-' + roomCode);
 
-        window.joinRoomByCode = async function() {
-            const code = document.getElementById('join-code').value.trim().toUpperCase();
-            const name = document.getElementById('join-name').value.trim();
+            peer.on('open', function(id) {
+                playersMap[myName] = true;
+                enterLobby(true);
+            });
+
+            peer.on('connection', function(conn) {
+                connections.push(conn);
+                
+                conn.on('data', function(data) {
+                    if (data.type === 'JOIN') {
+                        playersMap[data.name] = true;
+                        broadcastPlayers();
+                    }
+                });
+
+                conn.on('close', function() {
+                    // 연결 종료 시 처리
+                });
+            });
+
+            peer.on('error', function(err) {
+                if (err.type === 'unavailable-id') {
+                    alert("이미 사용 중인 코드입니다. 다시 시도해주세요.");
+                } else {
+                    alert("통신 연결 에러: " + err.type);
+                }
+            });
+        }
+
+        function joinRoomByCode() {
+            var code = document.getElementById('join-code').value.trim().toUpperCase();
+            var name = document.getElementById('join-name').value.trim();
 
             if (!code) return alert("방 코드를 입력해주세요!");
             if (!name) return alert("닉네임을 입력해주세요!");
 
-            try {
-                const roomRef = ref(database, 'rooms/' + code);
-                const snapshot = await get(roomRef);
+            roomCode = code;
+            myName = name;
+            connectToHost();
+        }
 
-                if (!snapshot.exists()) {
-                    alert("존재하지 않는 방 코드입니다. 코드를 다시 확인해주세요!");
-                    return;
-                }
-
-                currentRoomCode = code;
-                currentUserName = name;
-
-                enterRoom();
-            } catch (err) {
-                alert("연결 중 오류가 발생했습니다: " + err.message);
-            }
-        };
-
-        window.joinRoomByLink = async function() {
-            const name = document.getElementById('link-join-name').value.trim();
+        function joinRoomByLink() {
+            var name = document.getElementById('link-join-name').value.trim();
             if (!name) return alert("닉네임을 입력해주세요!");
 
-            try {
-                const roomRef = ref(database, 'rooms/' + currentRoomCode);
-                const snapshot = await get(roomRef);
+            myName = name;
+            connectToHost();
+        }
 
-                if (!snapshot.exists()) {
-                    alert("만료되었거나 존재하지 않는 방 링크입니다.");
-                    window.showScreen('screen-main');
-                    return;
-                }
+        function connectToHost() {
+            peer = new Peer();
 
-                currentUserName = name;
-                enterRoom();
-            } catch (err) {
-                alert("연결 중 오류가 발생했습니다: " + err.message);
-            }
-        };
+            peer.on('open', function() {
+                var conn = peer.connect('liar-room-' + roomCode);
 
-        function enterRoom() {
-            window.showScreen('screen-lobby');
+                conn.on('open', function() {
+                    conn.send({ type: 'JOIN', name: myName });
+                    enterLobby(false);
+                });
 
-            const baseUrl = window.location.href.split('?')[0];
-            const inviteUrl = `${baseUrl}?room=${currentRoomCode}`;
-            
-            document.getElementById('lobby-code').innerText = currentRoomCode;
+                conn.on('data', function(data) {
+                    if (data.type === 'SYNC') {
+                        playersMap = data.players;
+                        renderPlayers();
+                    }
+                });
+
+                conn.on('error', function(err) {
+                    alert("방에 연결할 수 없습니다. 방 코드를 확인해주세요.");
+                });
+            });
+
+            peer.on('error', function(err) {
+                alert("존재하지 않는 방이거나 연결에 실패했습니다.");
+            });
+        }
+
+        function enterLobby(isHost) {
+            showScreen('screen-lobby');
+
+            var baseUrl = window.location.href.split('?')[0];
+            var inviteUrl = baseUrl + '?room=' + roomCode;
+
+            document.getElementById('lobby-code').innerText = roomCode;
             document.getElementById('lobby-link').innerText = inviteUrl;
 
             document.getElementById('header-bar').style.display = 'block';
-            document.getElementById('display-room-code').innerText = currentRoomCode;
+            document.getElementById('display-room-code').innerText = roomCode;
+            document.getElementById('connection-status').innerText = isHost ? "● 방장 (대기 중)" : "● 참여 완료";
 
-            const roomPlayersRef = ref(database, 'rooms/' + currentRoomCode + '/players');
-            push(roomPlayersRef, currentUserName);
+            renderPlayers();
+        }
 
-            onValue(roomPlayersRef, (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    const playersArray = Object.values(data);
-                    renderPlayers(playersArray);
+        function broadcastPlayers() {
+            renderPlayers();
+            for (var i = 0; i < connections.length; i++) {
+                if (connections[i].open) {
+                    connections[i].send({ type: 'SYNC', players: playersMap });
                 }
-            });
+            }
         }
 
-        function renderPlayers(players) {
-            const listDiv = document.getElementById('player-list');
+        function renderPlayers() {
+            var listDiv = document.getElementById('player-list');
             listDiv.innerHTML = '';
-            
-            const uniquePlayers = [...new Set(players)];
-            
-            uniquePlayers.forEach(player => {
-                const badge = document.createElement('span');
+
+            var names = Object.keys(playersMap);
+            for (var i = 0; i < names.length; i++) {
+                var badge = document.createElement('span');
                 badge.className = 'player-badge';
-                badge.textContent = player;
+                badge.textContent = names[i];
                 listDiv.appendChild(badge);
-            });
+            }
         }
 
-        window.copyLink = function() {
-            const linkText = document.getElementById('lobby-link').innerText;
-            navigator.clipboard.writeText(linkText).then(() => {
+        function copyLink() {
+            var linkText = document.getElementById('lobby-link').innerText;
+            navigator.clipboard.writeText(linkText).then(function() {
                 alert("초대 링크가 복사되었습니다!");
             });
-        };
+        }
     </script>
 </body>
 </html>
