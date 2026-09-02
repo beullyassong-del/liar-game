@@ -213,11 +213,12 @@
             myName = name;
             roomCode = getRandomCode();
             isHost = true;
+            playersMap = {};
+            playersMap[myName] = true;
 
             peer = new Peer('liar-room-' + roomCode);
 
             peer.on('open', function() {
-                playersMap[myName] = true;
                 enterLobby();
             });
 
@@ -225,7 +226,6 @@
                 connections.push(conn);
                 conn.on('data', function(data) {
                     handleNetworkData(data);
-                    // Host가 모든 클라이언트에게 데이터 전송 (중계)
                     if (data.type === 'DRAW_LIVE' || data.type === 'SYNC_TURNS') {
                         broadcastData(data);
                     }
@@ -272,6 +272,7 @@
         function handleNetworkData(data) {
             if (data.type === 'JOIN' && isHost) {
                 playersMap[data.name] = true;
+                renderPlayers();
                 broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
             } else if (data.type === 'SYNC') {
                 playersMap = data.players;
@@ -452,7 +453,6 @@
             var isMyTurn = (activePlayer === myName);
             document.getElementById('my-turn-controls').style.display = isMyTurn ? "flex" : "none";
             
-            // 턴이 바뀌었을 때 그리기 권한 초기화
             hasDrawnThisTurn = false;
             isDrawing = false;
             currentStroke = [];
@@ -500,7 +500,7 @@
             function stopDraw() {
                 if (isDrawing) {
                     isDrawing = false;
-                    hasDrawnThisTurn = true; // 본인의 획 작성이 완료되었음을 표시
+                    hasDrawnThisTurn = true;
                 }
             }
 
@@ -553,7 +553,6 @@
             }
             var nextTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
             
-            // 데이터 동기화 명령 발송
             sendData({ type: 'SYNC_TURNS', history: turnsHistory, turnIndex: nextTurnIndex });
         }
 
