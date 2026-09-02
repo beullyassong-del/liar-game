@@ -27,13 +27,9 @@
         .info-box { background: #e9ecef; padding: 10px; border-radius: 6px; word-break: break-all; margin: 10px 0; font-size: 14px; }
         .status-text { color: #28a745; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
         
-        /* 대기실 게임 설정 박스 */
         .settings-box { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 15px; }
-        
-        /* 3인 미만 경고 메세지 스타일 */
         .error-message { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 12px; border-radius: 6px; margin: 10px 0; font-weight: bold; display: none; }
 
-        /* 뽑기 연출 스타일 */
         #roulette-box { font-size: 28px; font-weight: bold; color: #dc3545; padding: 20px; border: 3px dashed #007bff; border-radius: 10px; margin: 15px 0; background: #f8f9fa; }
         .result-keyword { font-size: 20px; color: #28a745; margin-top: 10px; font-weight: bold; }
     </style>
@@ -48,14 +44,12 @@
     </div>
 
     <div class="card">
-        <!-- 메인 화면 -->
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
             <button onclick="showScreen('screen-create')">게임 만들기</button>
             <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
-        <!-- 방 만들기 화면 (닉네임만 입력) -->
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <label>닉네임</label>
@@ -64,7 +58,6 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
-        <!-- 방 참여하기 화면 -->
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
             <input type="text" id="join-code" placeholder="방 코드 입력">
@@ -73,7 +66,6 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
-        <!-- 링크 참여 화면 -->
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
@@ -81,11 +73,9 @@
             <button onclick="joinRoomByLink()">입장하기</button>
         </div>
 
-        <!-- 대기실 화면 (방 생성 후 여기서 설정) -->
         <div id="screen-lobby" class="screen">
             <h2>대기실</h2>
 
-            <!-- 게임 설정 영역 -->
             <div class="settings-box">
                 <h3 style="margin-top: 0; font-size: 16px;">⚙️ 게임 설정</h3>
                 
@@ -121,14 +111,12 @@
                 <div id="lobby-link" class="info-box"></div>
             </div>
 
-            <!-- 화면용 경고 메시지 영역 -->
             <div id="start-warning" class="error-message">⚠️ 플레이어가 3명 이상이어야 게임을 시작할 수 있습니다!</div>
 
             <button onclick="copyLink()">초대 링크 복사</button>
             <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
         </div>
 
-        <!-- 게임 진행 화면 -->
         <div id="screen-game" class="screen">
             <h2>역할 추첨</h2>
             <div id="roulette-box">추첨 준비 중...</div>
@@ -205,169 +193,4 @@
 
         function joinRoomByLink() {
             var name = document.getElementById('link-join-name').value.trim();
-            if (!name) return alert("닉네임을 입력해주세요!");
-            myName = name; connectToHost();
-        }
-
-        function connectToHost() {
-            peer = new Peer();
-            peer.on('open', function() {
-                var conn = peer.connect('liar-room-' + roomCode);
-                conn.on('open', function() {
-                    conn.send({ type: 'JOIN', name: myName });
-                    enterLobby();
-                });
-                conn.on('data', function(data) {
-                    if (data.type === 'SYNC') {
-                        playersMap = data.players;
-                        gameSettings = data.settings;
-                        applySettingsUI();
-                        renderPlayers();
-                    } else if (data.type === 'START_GAME_INFO') {
-                        var myRole = data.liars.includes(myName) ? "라이어" : "시민";
-                        handleGameStart(myRole, data.keyword);
-                    }
-                });
-            });
-            peer.on('error', function() { alert("방 접속 실패! 코드를 확인해주세요."); });
-        }
-
-        function enterLobby() {
-            showScreen('screen-lobby');
-            document.getElementById('header-bar').style.display = 'block';
-            document.getElementById('display-room-code').innerText = roomCode;
-            document.getElementById('lobby-code').innerText = roomCode;
-            document.getElementById('lobby-link').innerText = window.location.href.split('?')[0] + '?room=' + roomCode;
-            document.getElementById('connection-status').innerText = isHost ? "● 방장" : "● 참여 완료";
-
-            var categorySelect = document.getElementById('setting-category');
-            var modeSelect = document.getElementById('setting-mode');
-            var liarSelect = document.getElementById('setting-liar-count');
-
-            if (isHost) {
-                document.getElementById('btn-start').style.display = 'block';
-                categorySelect.disabled = false;
-                modeSelect.disabled = false;
-                liarSelect.disabled = false;
-            } else {
-                document.getElementById('btn-start').style.display = 'none';
-                categorySelect.disabled = true;
-                modeSelect.disabled = true;
-                liarSelect.disabled = true;
-            }
-
-            renderPlayers();
-        }
-
-        // 방장이 설정 변경 시 호출
-        function updateSettings() {
-            if (!isHost) return;
-            gameSettings.category = document.getElementById('setting-category').value;
-            gameSettings.mode = document.getElementById('setting-mode').value;
-            gameSettings.liarCount = parseInt(document.getElementById('setting-liar-count').value);
-
-            broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
-        }
-
-        // 일반 참여자에게 변경된 설정 UI 반영
-        function applySettingsUI() {
-            document.getElementById('setting-category').value = gameSettings.category;
-            document.getElementById('setting-mode').value = gameSettings.mode;
-            document.getElementById('setting-liar-count').value = gameSettings.liarCount;
-        }
-
-        function renderPlayers() {
-            var listDiv = document.getElementById('player-list');
-            listDiv.innerHTML = '';
-            var names = Object.keys(playersMap);
-            document.getElementById('player-count').innerText = names.length;
-
-            for (var i = 0; i < names.length; i++) {
-                var badge = document.createElement('span');
-                badge.className = 'player-badge';
-                badge.textContent = names[i];
-                listDiv.appendChild(badge);
-            }
-
-            // 인원이 3명 이상 되면 경고 문구 숨김
-            if (names.length >= 3) {
-                document.getElementById('start-warning').style.display = 'none';
-            }
-        }
-
-        function broadcastData(data) {
-            renderPlayers();
-            for (var i = 0; i < connections.length; i++) {
-                if (connections[i].open) connections[i].send(data);
-            }
-        }
-
-        // 게임 시작 실행
-        function startGame() {
-            var playerNames = Object.keys(playersMap);
-            var warningBox = document.getElementById('start-warning');
-
-            // 3명 미만일 시 화면 내 경고 메시지 출력
-            if (playerNames.length < 3) {
-                warningBox.style.display = 'block';
-                return;
-            }
-
-            warningBox.style.display = 'none';
-
-            var words = wordDatabase[gameSettings.category];
-            var selectedKeyword = words[Math.floor(Math.random() * words.length)];
-            
-            var shuffledNames = [...playerNames].sort(() => 0.5 - Math.random());
-            var liars = shuffledNames.slice(0, gameSettings.liarCount);
-
-            // 방장 처리
-            var myRole = liars.includes(myName) ? "라이어" : "시민";
-            handleGameStart(myRole, selectedKeyword);
-
-            // 게스트 처리
-            broadcastData({ type: 'START_GAME_INFO', liars: liars, keyword: selectedKeyword });
-        }
-
-        // 뽑기 연출 및 결과 출력
-        function handleGameStart(role, keyword) {
-            showScreen('screen-game');
-            var rouletteBox = document.getElementById('roulette-box');
-            var resultBox = document.getElementById('role-result-box');
-            
-            rouletteBox.style.display = 'block';
-            resultBox.style.display = 'none';
-
-            var items = ["라이어", "시민", "라이어", "시민", "스파이"];
-            var count = 0;
-
-            var interval = setInterval(function() {
-                rouletteBox.innerText = items[Math.floor(Math.random() * items.length)];
-                count++;
-
-                if (count > 25) {
-                    clearInterval(interval);
-                    rouletteBox.style.display = 'none';
-                    resultBox.style.display = 'block';
-
-                    document.getElementById('my-role').innerText = role;
-                    if (role === "라이어") {
-                        document.getElementById('my-role').style.color = "#dc3545";
-                        document.getElementById('my-keyword').innerText = "제시어: ??? (당신은 라이어입니다!)";
-                    } else {
-                        document.getElementById('my-role').style.color = "#28a745";
-                        document.getElementById('my-keyword').innerText = "제시어: " + keyword;
-                    }
-                }
-            }, 100);
-        }
-
-        function copyLink() {
-            var linkText = document.getElementById('lobby-link').innerText;
-            navigator.clipboard.writeText(linkText).then(function() {
-                alert("초대 링크가 복사되었습니다!");
-            });
-        }
-    </script>
-</body>
-</html>
+            if
