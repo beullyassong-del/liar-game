@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>그림 라이어 게임</title>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
@@ -26,7 +27,6 @@
 </head>
 <body>
 
-    <!-- 상단 참여자 목록 표시 -->
     <div id="header-bar" style="display: none;">
         <strong>방 코드: <span id="display-room-code"></span></strong>
         <div style="margin-top: 10px;">참여 중인 사람:</div>
@@ -34,14 +34,12 @@
     </div>
 
     <div class="card">
-        <!-- 메인 화면 -->
         <div id="screen-main" class="screen active">
             <h1>그림 라이어 게임</h1>
             <button onclick="showScreen('screen-create')">게임 만들기</button>
             <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
         </div>
 
-        <!-- 방 만들기 화면 -->
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
             <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
@@ -49,7 +47,6 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
-        <!-- 방 참여하기 화면 -->
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
             <input type="text" id="join-code" placeholder="방 코드 6자리 입력">
@@ -58,7 +55,6 @@
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
 
-        <!-- 링크로 참여하는 화면 -->
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
             <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
@@ -66,7 +62,6 @@
             <button onclick="joinRoomByLink()">입장하기</button>
         </div>
 
-        <!-- 대기실 화면 -->
         <div id="screen-lobby" class="screen">
             <h2>대기실</h2>
             <p>친구들을 초대하세요!</p>
@@ -85,7 +80,8 @@
     <script>
         let currentRoomCode = "";
         let currentUserName = "";
-        let playersMap = new Map(); // 참가자 목록 보관
+        let playersSet = new Set();
+        let pusher = null;
         let channel = null;
 
         window.onload = function() {
@@ -150,39 +146,42 @@
             document.getElementById('header-bar').style.display = 'block';
             document.getElementById('display-room-code').innerText = currentRoomCode;
 
-            // 브라우저 실시간 채널 연결
-            channel = new BroadcastChannel('room_' + currentRoomCode);
-            
-            // 나 자신 추가
-            playersMap.set(currentUserName, true);
+            playersSet.add(currentUserName);
             renderPlayers();
 
-            // 메시지 수신 이벤트
-            channel.onmessage = function(event) {
-                const data = event.data;
-                
-                if (data.type === 'JOIN') {
-                    // 새로운 사람이 들어왔을 때
-                    playersMap.set(data.name, true);
-                    renderPlayers();
-                    // 내 이름을 새 플레이어에게 전달
-                    channel.postMessage({ type: 'SYNC', name: currentUserName });
-                } else if (data.type === 'SYNC') {
-                    // 기존 플레이어들의 정보 동기화
-                    playersMap.set(data.name, true);
-                    renderPlayers();
-                }
-            };
+            // 실시간 서버(Pusher) 연결
+            Pusher.logToConsole = false;
+            pusher = new Pusher('a25102008851f5068cfb', {
+                cluster: 'ap3'
+            });
 
-            // 내가 들어왔음을 다른 탭/창에 알림
-            channel.postMessage({ type: 'JOIN', name: currentUserName });
+            channel = pusher.subscribe('room-' + currentRoomCode);
+
+            // 신규 유저 입장 이벤트 수신
+            channel.bind('client-join', function(data) {
+                playersSet.add(data.name);
+                renderPlayers();
+                // 기존 유저가 신규 유저에게 본인 이름 응답
+                channel.trigger('client-sync', { name: currentUserName });
+            });
+
+            // 기존 유저 정보 동기화 수신
+            channel.bind('client-sync', function(data) {
+                playersSet.add(data.name);
+                renderPlayers();
+            });
+
+            // 입장 알림 송신
+            setTimeout(() => {
+                channel.trigger('client-join', { name: currentUserName });
+            }, 500);
         }
 
         function renderPlayers() {
             const listDiv = document.getElementById('player-list');
             listDiv.innerHTML = '';
             
-            playersMap.forEach((_, player) => {
+            playersSet.forEach(player => {
                 const badge = document.createElement('span');
                 badge.className = 'player-badge';
                 badge.textContent = player;
