@@ -31,7 +31,7 @@
 
         #header-bar {
             width: 100%;
-            max-width: 760px;
+            max-width: 900px;
             background: #fff;
             padding: 15px;
             border-radius: 10px;
@@ -57,7 +57,7 @@
             border-radius: 14px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 760px;
+            max-width: 900px;
             text-align: center;
         }
 
@@ -274,10 +274,10 @@
         }
 
         canvas {
-            width: 650px;
-            height: 550px;
+            width: 820px;
+            height: 500px;
             max-width: 100%;
-            aspect-ratio: 650 / 550;
+            aspect-ratio: 820 / 500;
             border: 3px solid #333;
             border-radius: 10px;
             background: white;
@@ -376,6 +376,7 @@
             canvas {
                 width: 100%;
                 height: auto;
+                aspect-ratio: 820 / 500;
             }
 
             .draw-actions {
@@ -984,6 +985,10 @@
 
         var isHost = false;
 
+        // 닉네임 중복 거부 후 다시 입력할 화면/입력창
+        var pendingJoinScreen = "screen-join";
+        var pendingJoinInputId = "join-name";
+
 
         /* =====================================================
            게임 설정
@@ -1045,6 +1050,7 @@
         var MAX_INK = 150;
 
         var ink = MAX_INK;
+        var inkEmptyAlertShown = false;
 
 
         /* =====================================================
@@ -1423,6 +1429,8 @@
                         "data",
                         function(data) {
 
+                            data.connection = conn;
+
                             handleNetworkData(
                                 data
                             );
@@ -1483,6 +1491,9 @@
 
             myName = name;
 
+            pendingJoinScreen = "screen-join";
+            pendingJoinInputId = "join-name";
+
             connectToHost();
         }
 
@@ -1513,6 +1524,9 @@
 
 
             myName = name;
+
+            pendingJoinScreen = "screen-link-join";
+            pendingJoinInputId = "link-join-name";
 
             connectToHost();
         }
@@ -1547,9 +1561,6 @@
 
                                 name: myName
                             });
-
-
-                            enterLobby();
                         }
                     );
 
@@ -1617,20 +1628,60 @@
 
                 if (data.type === "JOIN") {
 
-                    if (
-                        playersMap[data.name]
+                    var requestedName =
+                        (data.name || "").trim();
+
+                    // 같은 이름은 대소문자와 관계없이 중복으로 처리
+                    var normalizedRequestedName =
+                        requestedName.toLowerCase();
+
+                    var duplicateName = false;
+
+                    var existingNames =
+                        Object.keys(playersMap);
+
+                    for (
+                        var ni = 0;
+                        ni < existingNames.length;
+                        ni++
                     ) {
+                        if (
+                            existingNames[ni]
+                                .trim()
+                                .toLowerCase()
+                            === normalizedRequestedName
+                        ) {
+                            duplicateName = true;
+                            break;
+                        }
+                    }
+
+                    if (duplicateName) {
+
+                        if (data.connection) {
+                            data.connection.send({
+                                type: "JOIN_REJECTED",
+                                reason: "DUPLICATE_NAME"
+                            });
+                        }
 
                         return;
                     }
 
+                    if (!requestedName) {
+                        return;
+                    }
 
-                    playersMap[data.name] =
-                        true;
+                    playersMap[requestedName] = true;
 
+                    // 이 연결에만 입장 허용을 알려줌
+                    if (data.connection) {
+                        data.connection.send({
+                            type: "JOIN_ACCEPTED"
+                        });
+                    }
 
                     renderPlayers();
-
 
                     broadcastData({
 
@@ -1640,7 +1691,6 @@
 
                         settings: gameSettings
                     });
-
 
                     return;
                 }
@@ -1890,6 +1940,64 @@
 
                     return;
                 }
+            }
+
+
+            /* 입장 승인 */
+            if (
+                data.type ===
+                "JOIN_ACCEPTED"
+            ) {
+
+                enterLobby();
+
+                return;
+            }
+
+
+            /* 닉네임 중복 */
+            if (
+                data.type ===
+                "JOIN_REJECTED"
+            ) {
+
+                if (
+                    data.reason ===
+                    "DUPLICATE_NAME"
+                ) {
+
+                    alert(
+                        "이 이름은 이미 있습니다. 다른 닉네임을 입력해주세요."
+                    );
+
+                    var joinInput =
+                        document.getElementById(
+                            pendingJoinInputId
+                        );
+
+                    if (joinInput) {
+                        joinInput.value = "";
+                        joinInput.focus();
+                    }
+
+                    showScreen(
+                        pendingJoinScreen
+                    );
+                }
+
+                if (hostConn) {
+                    try {
+                        hostConn.close();
+                    } catch (e) {}
+                }
+
+                if (peer) {
+                    try {
+                        peer.destroy();
+                    } catch (e) {}
+                }
+
+                return;
             }
 
 
@@ -2168,6 +2276,7 @@
 
 
             ink = MAX_INK;
+            inkEmptyAlertShown = false;
 
             updateInkUI();
         }
@@ -2880,6 +2989,7 @@
             /* 잉크 100% */
 
             ink = MAX_INK;
+            inkEmptyAlertShown = false;
 
             updateInkUI();
 
@@ -3051,6 +3161,7 @@
                 myTurnStrokes = [];
 
                 ink = MAX_INK;
+                inkEmptyAlertShown = false;
 
                 updateInkUI();
             }
@@ -3102,6 +3213,20 @@
         }
 
 
+        function showInkEmptyMessage() {
+
+            if (inkEmptyAlertShown) {
+                return;
+            }
+
+            inkEmptyAlertShown = true;
+
+            alert(
+                "🖊️ 잉크를 다 썼습니다!"
+            );
+        }
+
+
         /* =====================================================
            그림 시작
         ===================================================== */
@@ -3119,6 +3244,8 @@
 
 
             if (ink <= 0) {
+
+                showInkEmptyMessage();
 
                 return;
             }
@@ -3217,6 +3344,8 @@
             if (ink <= 0) {
 
                 isDrawing = false;
+
+                showInkEmptyMessage();
 
                 return;
             }
@@ -3472,6 +3601,10 @@
 
 
             updateInkUI();
+
+            if (ink <= 0) {
+                showInkEmptyMessage();
+            }
         }
 
 
@@ -3628,6 +3761,7 @@
              */
 
             ink = MAX_INK;
+            inkEmptyAlertShown = false;
 
             updateInkUI();
 
@@ -4252,6 +4386,7 @@
              */
 
             ink = MAX_INK;
+            inkEmptyAlertShown = false;
 
             updateInkUI();
 
