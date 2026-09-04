@@ -1696,80 +1696,80 @@
                 }
 
 
-                /* 다음 턴 */
+/* 다음 턴 */
 
-                if (
-                    data.type ===
-                    "REQ_NEXT_TURN"
-                ) {
+if (
+    data.type ===
+    "REQ_NEXT_TURN"
+) {
 
-                    if (
-                        Array.isArray(
-                            data.strokes
-                        )
-                    ) {
+    if (
+        Array.isArray(
+            data.strokes
+        )
+    ) {
 
-                        for (
-                            var i = 0;
-                            i < data.strokes.length;
-                            i++
-                        ) {
+        for (
+            var i = 0;
+            i < data.strokes.length;
+            i++
+        ) {
 
-                            if (
-                                data.strokes[i] &&
-                                data.strokes[i].length > 0
-                            ) {
+            if (
+                data.strokes[i] &&
+                data.strokes[i].length > 0
+            ) {
 
-                                turnsHistory.push({
+                turnsHistory.push({
 
-                                    player:
-                                        data.player,
+                    player:
+                        data.player,
 
-                                    path:
-                                        data.strokes[i]
-                                });
-                            }
-                        }
-                    }
-
-
-                    currentTurnIndex++;
+                    path:
+                        data.strokes[i]
+                });
+            }
+        }
+    }
 
 
-                    if (
-                        currentTurnIndex >=
-                        playerOrder.length
-                    ) {
-
-                        currentTurnIndex = 0;
-                    }
+    currentTurnIndex++;
 
 
-                    var nextPayload = {
+    if (
+        currentTurnIndex >=
+        playerOrder.length
+    ) {
 
-                        type:
-                            "SYNC_TURNS",
-
-                        history:
-                            turnsHistory,
-
-                        turnIndex:
-                            currentTurnIndex
-                    };
+        currentTurnIndex = 0;
+    }
 
 
-                    broadcastData(
-                        nextPayload
-                    );
+    var nextPayload = {
+
+        type:
+            "SYNC_TURNS",
+
+        history:
+            turnsHistory,
+
+        turnIndex:
+            currentTurnIndex
+    };
 
 
-                    handleNetworkData(
-                        nextPayload
-                    );
+    broadcastData(
+        nextPayload
+    );
 
+    // 방장 본인의 캔버스/상태도 갱신
+    turnsHistory = nextPayload.history;
+    currentTurnIndex = nextPayload.turnIndex;
+    redrawCanvas();
+    updateTurnState();
 
-                    return;
-                }
+    return;
+}
 
 
                 /* 내 그림 초기화 */
@@ -3777,64 +3777,66 @@
         }
 
 
-        /* =====================================================
-           턴 완료
-        ===================================================== */
+/* =====================================================
+   턴 완료
+===================================================== */
 
-        function finishMyTurn() {
+function finishMyTurn() {
 
-            if (
-                playerOrder[
-                    currentTurnIndex
-                ] !== myName
-            ) {
+    if (
+        playerOrder[
+            currentTurnIndex
+        ] !== myName
+    ) {
 
-                return;
-            }
+        return;
+    }
 
+    // 마우스/터치를 떼지 않고 '그만' 버튼을 눌렀을 경우를 대비해 선 강제 종료
+    if (isDrawing || currentStroke.length > 0) {
+        stopDraw();
+    }
 
-            if (isDrawing) {
+    if (
+        myTurnStrokes.length === 0
+    ) {
 
-                stopDraw();
-            }
+        alert(
+            "그림을 조금이라도 그려주세요!"
+        );
 
+        return;
+    }
 
-            if (
-                myTurnStrokes.length === 0
-            ) {
+    var strokesToSend =
+        myTurnStrokes.slice();
 
-                alert(
-                    "그림을 조금이라도 그려주세요!"
-                );
+    // 턴을 넘기기 전에 내가 그린 마지막 선을 내 화면 history에도 먼저 추가
+    for (var i = 0; i < strokesToSend.length; i++) {
+        turnsHistory.push({
+            player: myName,
+            path: strokesToSend[i]
+        });
+    }
 
-                return;
-            }
+    sendData({
 
+        type:
+            "REQ_NEXT_TURN",
 
-            var strokesToSend =
-                myTurnStrokes.slice();
+        player:
+            myName,
 
+        strokes:
+            strokesToSend
+    });
 
-            sendData({
+    myTurnStrokes = [];
 
-                type:
-                    "REQ_NEXT_TURN",
+    currentStroke = [];
 
-                player:
-                    myName,
-
-                strokes:
-                    strokesToSend
-            });
-
-
-            myTurnStrokes = [];
-
-            currentStroke = [];
-
-            isDrawing = false;
-        }
-
+    isDrawing = false;
+}
 
         /* =====================================================
            캔버스 이벤트
