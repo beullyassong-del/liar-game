@@ -199,10 +199,7 @@
             text-align: center;
         }
 
-        /* ===================================
-           게임 상단 제시어
-        =================================== */
-
+        /* 게임 상단 제시어 */
         .ingame-keyword-bar {
             background-color: #e3f2fd;
             border: 2px solid #2196f3;
@@ -233,10 +230,7 @@
             margin-bottom: 10px;
         }
 
-        /* ===================================
-           잉크 게이지
-        =================================== */
-
+        /* 잉크 게이지 */
         .ink-container {
             width: 100%;
             margin: 10px 0 15px 0;
@@ -269,10 +263,7 @@
             transition: width 0.08s linear;
         }
 
-        /* ===================================
-           캔버스
-        =================================== */
-
+        /* 캔버스 */
         #canvas-container {
             position: relative;
             margin: 15px 0;
@@ -326,10 +317,7 @@
             width: 50%;
         }
 
-        /* ===================================
-           투표
-        =================================== */
-
+        /* 투표 */
         .vote-list {
             display: flex;
             flex-direction: column;
@@ -376,6 +364,7 @@
         }
 
         @media (max-width: 700px) {
+
             body {
                 padding: 10px;
             }
@@ -402,10 +391,7 @@
 
 <body>
 
-    <!-- ===================================
-         상단 플레이어 정보
-    =================================== -->
-
+    <!-- 상단 플레이어 -->
     <div id="header-bar" style="display: none;">
 
         <strong>
@@ -413,10 +399,7 @@
             <span id="display-room-code"></span>
         </strong>
 
-        <div
-            id="connection-status"
-            class="status-text"
-        >
+        <div id="connection-status" class="status-text">
             연결 중...
         </div>
 
@@ -432,20 +415,12 @@
 
     <div class="card">
 
-        <!-- ===================================
-             1. 메인
-        =================================== -->
-
-        <div
-            id="screen-main"
-            class="screen active"
-        >
+        <!-- 메인 -->
+        <div id="screen-main" class="screen active">
 
             <h1>🎨 그림 라이어 게임</h1>
 
-            <button
-                onclick="showScreen('screen-create')"
-            >
+            <button onclick="showScreen('screen-create')">
                 게임 만들기
             </button>
 
@@ -459,14 +434,8 @@
         </div>
 
 
-        <!-- ===================================
-             2. 방 생성
-        =================================== -->
-
-        <div
-            id="screen-create"
-            class="screen"
-        >
+        <!-- 방 만들기 -->
+        <div id="screen-create" class="screen">
 
             <h2>방 만들기</h2>
 
@@ -493,14 +462,8 @@
         </div>
 
 
-        <!-- ===================================
-             3. 코드 참가
-        =================================== -->
-
-        <div
-            id="screen-join"
-            class="screen"
-        >
+        <!-- 방 참여 -->
+        <div id="screen-join" class="screen">
 
             <h2>방 참여하기</h2>
 
@@ -531,14 +494,8 @@
         </div>
 
 
-        <!-- ===================================
-             4. 링크 참가
-        =================================== -->
-
-        <div
-            id="screen-link-join"
-            class="screen"
-        >
+        <!-- 링크 참여 -->
+        <div id="screen-link-join" class="screen">
 
             <h2>게임 참여하기</h2>
 
@@ -560,14 +517,8 @@
         </div>
 
 
-        <!-- ===================================
-             5. 대기실
-        =================================== -->
-
-        <div
-            id="screen-lobby"
-            class="screen"
-        >
+        <!-- 로비 -->
+        <div id="screen-lobby" class="screen">
 
             <h2>대기실</h2>
 
@@ -590,89 +541,27 @@
                     onchange="updateSettings()"
                 >
 
-                    <option value="동물">
-                        🐯 동물
-                    </option>
-
-                    <option value="음식">
-                        🍔 음식
-                    </option>
-
-                    <option value="인물">
-                        👤 인물
-                    </option>
-
-                    <option value="게임">
-                        🎮 게임
-                    </option>
-
-                    <option value="애니메이션">
-                        📺 애니메이션
-                    </option>
-
-                    <option value="탈것">
-                        🚗 탈것
-                    </option>
-
-                    <option value="직업">
-                        💼 직업
-                    </option>
-
-                    <option value="장소">
-                        📍 장소
-                    </option>
-
-                    <option value="스포츠">
-                        ⚽ 스포츠
-                    </option>
-
-                    <option value="전자기기">
-                        💻 전자기기
-                    </option>
-
-                    <option value="학교">
-                        🏫 학교
-                    </option>
-
-                    <option value="자연">
-                        🌳 자연
-                    </option>
-
-                    <option value="과일">
-                        🍎 과일
-                    </option>
-
-                    <option value="디저트">
-                        🍰 디저트
-                    </option>
-
-                    <option value="음료">
-                        🥤 음료
-                    </option>
-
-                    <option value="가전제품">
-                        🏠 가전제품
-                    </option>
-
-                    <option value="생활용품">
-                        🧴 생활용품
-                    </option>
-
-                    <option value="캐릭터">
-                        🧸 캐릭터
-                    </option>
-
-                    <option value="나라">
-                        🌎 나라
-                    </option>
-
-                    <option value="우주">
-                        🚀 우주
-                    </option>
-
-                    <option value="공포">
-                        👻 공포
-                    </option>
+                    <option value="동물">🐯 동물</option>
+                    <option value="음식">🍔 음식</option>
+                    <option value="인물">👤 인물</option>
+                    <option value="게임">🎮 게임</option>
+                    <option value="애니메이션">📺 애니메이션</option>
+                    <option value="탈것">🚗 탈것</option>
+                    <option value="직업">💼 직업</option>
+                    <option value="장소">📍 장소</option>
+                    <option value="스포츠">⚽ 스포츠</option>
+                    <option value="전자기기">💻 전자기기</option>
+                    <option value="학교">🏫 학교</option>
+                    <option value="자연">🌳 자연</option>
+                    <option value="과일">🍎 과일</option>
+                    <option value="디저트">🍰 디저트</option>
+                    <option value="음료">🥤 음료</option>
+                    <option value="가전제품">🏠 가전제품</option>
+                    <option value="생활용품">🧴 생활용품</option>
+                    <option value="캐릭터">🧸 캐릭터</option>
+                    <option value="나라">🌎 나라</option>
+                    <option value="우주">🚀 우주</option>
+                    <option value="공포">👻 공포</option>
 
                 </select>
 
@@ -777,14 +666,8 @@
         </div>
 
 
-        <!-- ===================================
-             6. 역할 추첨
-        =================================== -->
-
-        <div
-            id="screen-game"
-            class="screen"
-        >
+        <!-- 역할 -->
+        <div id="screen-game" class="screen">
 
             <h2>🎲 역할 추첨</h2>
 
@@ -820,10 +703,7 @@
         </div>
 
 
-        <!-- ===================================
-             7. 그림
-        =================================== -->
-
+        <!-- 그림 -->
         <div
             id="screen-drawing"
             class="screen"
@@ -848,12 +728,14 @@
             <div id="turn-announcement"></div>
 
 
-            <!-- 잉크 -->
+            <!-- 잉크 게이지 -->
             <div class="ink-container">
 
                 <div class="ink-title">
 
-                    <span>🖊️ 잉크</span>
+                    <span>
+                        🖊️ 잉크
+                    </span>
 
                     <span id="ink-percent">
                         100%
@@ -862,7 +744,9 @@
                 </div>
 
                 <div class="ink-bar">
+
                     <div id="ink-fill"></div>
+
                 </div>
 
             </div>
@@ -931,7 +815,7 @@
             </div>
 
 
-            <!-- 턴 버튼 -->
+            <!-- 그림 버튼 -->
             <div
                 class="draw-actions"
                 id="my-turn-controls"
@@ -968,10 +852,7 @@
         </div>
 
 
-        <!-- ===================================
-             8. 투표
-        =================================== -->
-
+        <!-- 투표 -->
         <div
             id="screen-vote"
             class="screen"
@@ -1001,17 +882,13 @@
         </div>
 
 
-        <!-- ===================================
-             9. 결과
-        =================================== -->
-
+        <!-- 결과 -->
         <div
             id="screen-result"
             class="screen"
         >
 
             <h2>🎉 게임 결과</h2>
-
 
             <div
                 id="result-box-ui"
@@ -1028,6 +905,7 @@
 
                 <p>
                     <strong>진짜 라이어:</strong>
+
                     <span
                         id="actual-liars"
                         style="color:#dc3545;"
@@ -1037,6 +915,7 @@
 
                 <p>
                     <strong>진짜 제시어:</strong>
+
                     <span
                         id="actual-keyword"
                         style="color:#28a745;"
@@ -1094,17 +973,13 @@
         ===================================================== */
 
         var peer = null;
-
         var connections = [];
-
         var hostConn = null;
 
         var myName = "";
-
         var roomCode = "";
 
         var playersMap = {};
-
         var playerOrder = [];
 
         var isHost = false;
@@ -1128,15 +1003,12 @@
         var currentTurnIndex = 0;
 
         var gameTimer = null;
-
         var timeLeft = 240;
 
         var currentLiars = [];
-
         var currentSpies = [];
 
         var currentKeyword = "";
-
         var fakeKeyword = "";
 
         var myDisplayKeyword = "";
@@ -1147,16 +1019,14 @@
         ===================================================== */
 
         var votesMap = {};
-
         var submittedVotes = {};
 
 
         /* =====================================================
-           Canvas
+           캔버스
         ===================================================== */
 
         var canvas = null;
-
         var ctx = null;
 
         var isDrawing = false;
@@ -1168,9 +1038,11 @@
 
         /* =====================================================
            잉크
+           
+           기존 1000 → 600으로 감소
         ===================================================== */
 
-        var MAX_INK = 1000;
+        var MAX_INK = 600;
 
         var ink = MAX_INK;
 
@@ -1556,16 +1428,6 @@
                             );
                         }
                     );
-
-                    conn.on(
-                        "close",
-                        function() {
-
-                            removeClosedConnection(
-                                conn
-                            );
-                        }
-                    );
                 }
             );
 
@@ -1584,7 +1446,7 @@
 
 
         /* =====================================================
-           코드로 참가
+           코드 참가
         ===================================================== */
 
         function joinRoomByCode() {
@@ -1626,7 +1488,7 @@
 
 
         /* =====================================================
-           링크로 참가
+           링크 참가
         ===================================================== */
 
         function joinRoomByLink() {
@@ -1657,7 +1519,7 @@
 
 
         /* =====================================================
-           방장 연결
+           호스트 연결
         ===================================================== */
 
         function connectToHost() {
@@ -1724,21 +1586,6 @@
 
 
         /* =====================================================
-           연결 제거
-        ===================================================== */
-
-        function removeClosedConnection(conn) {
-
-            connections =
-                connections.filter(
-                    function(item) {
-                        return item !== conn;
-                    }
-                );
-        }
-
-
-        /* =====================================================
            데이터 전송
         ===================================================== */
 
@@ -1764,13 +1611,9 @@
 
         function handleNetworkData(data) {
 
-            /* =================================
-               방장
-            ================================= */
+            /* 방장 */
 
             if (isHost) {
-
-                /* 참가자 입장 */
 
                 if (data.type === "JOIN") {
 
@@ -1823,12 +1666,12 @@
                         ) {
 
                             if (
-                                data.strokes[i]
-                                &&
+                                data.strokes[i] &&
                                 data.strokes[i].length > 0
                             ) {
 
                                 turnsHistory.push({
+
                                     player:
                                         data.player,
 
@@ -1842,9 +1685,9 @@
 
                     currentTurnIndex++;
 
+
                     if (
-                        currentTurnIndex
-                        >=
+                        currentTurnIndex >=
                         playerOrder.length
                     ) {
 
@@ -1879,7 +1722,7 @@
                 }
 
 
-                /* 현재 턴 그림 초기화 */
+                /* 내 그림 초기화 */
 
                 if (
                     data.type ===
@@ -1891,8 +1734,7 @@
                             function(stroke) {
 
                                 return (
-                                    stroke.player
-                                    !==
+                                    stroke.player !==
                                     data.player
                                 );
                             }
@@ -1959,7 +1801,6 @@
 
 
                     votesMap = {};
-
                     submittedVotes = {};
 
 
@@ -1984,7 +1825,7 @@
                 }
 
 
-                /* 투표 */
+                /* 투표 제출 */
 
                 if (
                     data.type ===
@@ -2046,14 +1887,13 @@
                         calculateAndBroadcastResult();
                     }
 
+
                     return;
                 }
             }
 
 
-            /* =================================
-               모든 플레이어
-            ================================= */
+            /* 모든 플레이어 */
 
             if (
                 data.type ===
@@ -2121,7 +1961,6 @@
                     "⏱️ 남은 시간: "
                     + timeLeft
                     + "초";
-
 
                 return;
             }
@@ -2213,7 +2052,7 @@
 
 
         /* =====================================================
-           로비
+           로비 진입
         ===================================================== */
 
         function enterLobby() {
@@ -2263,8 +2102,7 @@
                     "lobby-link"
                 )
                 .innerText =
-                window.location.href
-                    .split("?")[0]
+                window.location.href.split("?")[0]
                 + "?room="
                 + roomCode;
 
@@ -2363,8 +2201,7 @@
 
 
             if (
-                newCount >= 1
-                &&
+                newCount >= 1 &&
                 newCount <= maxLiar
             ) {
 
@@ -2377,7 +2214,7 @@
 
 
         /* =====================================================
-           설정 변경
+           설정
         ===================================================== */
 
         function updateSettings() {
@@ -2403,11 +2240,14 @@
 
             broadcastData({
 
-                type: "SYNC",
+                type:
+                    "SYNC",
 
-                players: playersMap,
+                players:
+                    playersMap,
 
-                settings: gameSettings
+                settings:
+                    gameSettings
             });
 
 
@@ -2447,7 +2287,7 @@
 
 
         /* =====================================================
-           플레이어 목록
+           플레이어 렌더링
         ===================================================== */
 
         function renderPlayers() {
@@ -2458,7 +2298,8 @@
                 );
 
 
-            list.innerHTML = "";
+            list.innerHTML =
+                "";
 
 
             var names =
@@ -2501,13 +2342,12 @@
             }
 
 
-            var warning =
-                document.getElementById(
+            document
+                .getElementById(
                     "start-warning"
-                );
-
-
-            warning.style.display =
+                )
+                .style
+                .display =
                 names.length >= 3
                     ? "none"
                     : "block";
@@ -2518,7 +2358,7 @@
 
 
         /* =====================================================
-           전체 방송
+           방송
         ===================================================== */
 
         function broadcastData(data) {
@@ -2591,8 +2431,8 @@
             var selectedKeyword =
                 words[
                     Math.floor(
-                        Math.random()
-                        * words.length
+                        Math.random() *
+                        words.length
                     )
                 ];
 
@@ -2614,8 +2454,8 @@
             var selectedFakeKeyword =
                 otherWords[
                     Math.floor(
-                        Math.random()
-                        * otherWords.length
+                        Math.random() *
+                        otherWords.length
                     )
                 ];
 
@@ -2673,8 +2513,8 @@
                     spies.push(
                         nonLiars[
                             Math.floor(
-                                Math.random()
-                                * nonLiars.length
+                                Math.random() *
+                                nonLiars.length
                             )
                         ]
                     );
@@ -2719,7 +2559,7 @@
 
 
         /* =====================================================
-           배열 섞기
+           셔플
         ===================================================== */
 
         function shuffle(array) {
@@ -2732,8 +2572,8 @@
 
                 var j =
                     Math.floor(
-                        Math.random()
-                        * (i + 1)
+                        Math.random() *
+                        (i + 1)
                     );
 
 
@@ -2753,7 +2593,7 @@
 
 
         /* =====================================================
-           역할 화면
+           역할 추첨
         ===================================================== */
 
         function handleGameStart(mode) {
@@ -2812,8 +2652,8 @@
                         roulette.innerText =
                             texts[
                                 Math.floor(
-                                    Math.random()
-                                    * texts.length
+                                    Math.random() *
+                                    texts.length
                                 )
                             ];
 
@@ -2865,16 +2705,10 @@
                                     "";
 
 
-                                if (isLiar) {
-
-                                    myDisplayKeyword =
-                                        fakeKeyword;
-
-                                } else {
-
-                                    myDisplayKeyword =
-                                        currentKeyword;
-                                }
+                                myDisplayKeyword =
+                                    isLiar
+                                        ? fakeKeyword
+                                        : currentKeyword;
 
 
                                 document
@@ -2886,7 +2720,6 @@
                                     + myDisplayKeyword;
 
                             }
-
 
                             else if (
                                 mode ===
@@ -2928,13 +2761,10 @@
                                     "제시어: "
                                     + currentKeyword
                                     + " (라이어: "
-                                    + currentLiars.join(
-                                        ", "
-                                    )
+                                    + currentLiars.join(", ")
                                     + ")";
 
                             }
-
 
                             else {
 
@@ -3019,7 +2849,7 @@
 
 
         /* =====================================================
-           그림 단계
+           그림 시작
         ===================================================== */
 
         function initDrawingPhase() {
@@ -3046,6 +2876,8 @@
 
             redrawCanvas();
 
+
+            /* 잉크 100% */
 
             ink = MAX_INK;
 
@@ -3151,8 +2983,7 @@
                                     gameTimer
                                 );
 
-                                gameTimer =
-                                    null;
+                                gameTimer = null;
 
 
                                 sendData({
@@ -3170,7 +3001,7 @@
 
 
         /* =====================================================
-           턴 변경
+           턴 상태
         ===================================================== */
 
         function updateTurnState() {
@@ -3192,8 +3023,7 @@
 
 
             var isMyTurn =
-                activePlayer ===
-                myName;
+                activePlayer === myName;
 
 
             document
@@ -3212,6 +3042,10 @@
             currentStroke = [];
 
 
+            /*
+             * 내 턴이면 잉크를 100%로 충전
+             */
+
             if (isMyTurn) {
 
                 myTurnStrokes = [];
@@ -3224,7 +3058,7 @@
 
 
         /* =====================================================
-           위치 계산
+           캔버스 위치
         ===================================================== */
 
         function getCanvasPosition(e) {
@@ -3360,9 +3194,11 @@
             });
 
 
-            /* 점 하나도 잉크를 조금 소비 */
+            /*
+             * 시작점 잉크
+             */
 
-            useInk(1);
+            useInk(2);
         }
 
 
@@ -3445,23 +3281,29 @@
 
 
             /*
-             * 길게 그을수록 잉크 사용
-             * 굵을수록 잉크 사용 증가
+             * ======================================
+             * 잉크 소모량
+             *
+             * 기존:
+             * 0.055 + brushSize * 0.012
+             *
+             * 변경:
+             * 0.12 + brushSize * 0.02
+             *
+             * 훨씬 빠르게 닳음
+             * ======================================
              */
 
             var inkCost =
-                distance
-                *
+                distance *
                 (
-                    0.055
-                    +
-                    brushSize * 0.012
+                    0.12 +
+                    brushSize * 0.02
                 );
 
 
             /*
              * 잉크가 부족한 경우
-             * 남은 잉크만큼만 그림
              */
 
             if (inkCost > ink) {
@@ -3583,7 +3425,7 @@
 
 
         /* =====================================================
-           그림 종료
+           선 종료
         ===================================================== */
 
         function stopDraw() {
@@ -3598,8 +3440,7 @@
 
 
             /*
-             * 현재 선을 저장
-             * 마우스를 떼어도 턴은 유지됨
+             * 마우스를 떼어도 턴 종료 X
              */
 
             if (
@@ -3616,7 +3457,7 @@
 
 
         /* =====================================================
-           잉크 사용
+           잉크 감소
         ===================================================== */
 
         function useInk(amount) {
@@ -3710,7 +3551,9 @@
 
 
             ctx.lineWidth =
-                Number(pt.size);
+                Number(
+                    pt.size
+                );
 
 
             ctx.lineCap =
@@ -3722,7 +3565,8 @@
 
 
             if (
-                pt.type === "start"
+                pt.type ===
+                "start"
             ) {
 
                 ctx.beginPath();
@@ -3745,7 +3589,7 @@
 
 
         /* =====================================================
-           실시간 그림 표시
+           실시간 선
         ===================================================== */
 
         function drawLivePoint(pt) {
@@ -3778,6 +3622,10 @@
 
             myTurnStrokes = [];
 
+
+            /*
+             * 잉크 복구
+             */
 
             ink = MAX_INK;
 
@@ -3855,7 +3703,7 @@
 
 
         /* =====================================================
-           Canvas 이벤트
+           캔버스 이벤트
         ===================================================== */
 
         function setupCanvasEvents() {
@@ -3943,7 +3791,7 @@
 
 
         /* =====================================================
-           전체 그림 다시 표시
+           캔버스 전체 다시 그리기
         ===================================================== */
 
         function redrawCanvas() {
@@ -3986,20 +3834,18 @@
 
         function requestEarlyVote() {
 
-            var ok =
+            if (
                 confirm(
                     "지금 바로 투표를 시작하시겠습니까?"
-                );
+                )
+            ) {
 
+                sendData({
 
-            if (!ok) return;
-
-
-            sendData({
-
-                type:
-                    "REQ_START_VOTE"
-            });
+                    type:
+                        "REQ_START_VOTE"
+                });
+            }
         }
 
 
@@ -4087,7 +3933,7 @@
 
 
         /* =====================================================
-           투표 제출
+           투표
         ===================================================== */
 
         function submitMyVote(
@@ -4182,10 +4028,6 @@
             }
 
 
-            /*
-             * 동률 처리
-             */
-
             if (!mostVotedPlayer) {
 
                 var names =
@@ -4230,7 +4072,7 @@
 
 
         /* =====================================================
-           결과 화면
+           결과
         ===================================================== */
 
         function renderGameResult(
@@ -4404,9 +4246,15 @@
 
             myDisplayKeyword = "";
 
+
+            /*
+             * 잉크 초기화
+             */
+
             ink = MAX_INK;
 
             updateInkUI();
+
 
             redrawCanvas();
 
@@ -4430,7 +4278,7 @@
 
 
         /* =====================================================
-           초대 링크 복사
+           링크 복사
         ===================================================== */
 
         function copyLink() {
@@ -4514,7 +4362,7 @@
             } catch (e) {
 
                 alert(
-                    "링크를 직접 복사해주세요:\n"
+                    "링크를 직접 복사해주세요.\n\n"
                     + text
                 );
             }
