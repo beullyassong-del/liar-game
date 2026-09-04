@@ -3435,75 +3435,40 @@ if (
              * 잉크가 부족한 경우
              */
 
-            if (inkCost > ink) {
+// ... moveDraw 함수 내부 ...
+if (inkCost > ink) {
+    var ratio = ink / inkCost;
+    ratio = Math.max(0, Math.min(1, ratio));
 
-                var ratio =
-                    ink / inkCost;
+    var limitedPoint = {
+        x: last.x + dx * ratio,
+        y: last.y + dy * ratio,
+        color: color,
+        size: brushSize,
+        type: "move"
+    };
 
+    currentStroke.push(limitedPoint);
+    drawSegment(limitedPoint);
 
-                ratio =
-                    Math.max(
-                        0,
-                        Math.min(
-                            1,
-                            ratio
-                        )
-                    );
+    sendData({
+        type: "DRAW_LIVE",
+        strokeData: limitedPoint,
+        sender: myName
+    });
 
+    ink = 0;
+    updateInkUI();
+    isDrawing = false;
 
-                var limitedPoint = {
+    // ★ [추가] 잉크 소진 시 지금까지 그린 획을 myTurnStrokes에 보관하고 currentStroke를 비웁니다.
+    if (currentStroke.length > 0) {
+        myTurnStrokes.push(currentStroke);
+        currentStroke = [];
+    }
 
-                    x:
-                        last.x
-                        + dx * ratio,
-
-                    y:
-                        last.y
-                        + dy * ratio,
-
-                    color:
-                        color,
-
-                    size:
-                        brushSize,
-
-                    type:
-                        "move"
-                };
-
-
-                currentStroke.push(
-                    limitedPoint
-                );
-
-
-                drawSegment(
-                    limitedPoint
-                );
-
-
-                sendData({
-
-                    type:
-                        "DRAW_LIVE",
-
-                    strokeData:
-                        limitedPoint,
-
-                    sender:
-                        myName
-                });
-
-
-                ink = 0;
-
-                updateInkUI();
-
-                isDrawing = false;
-
-                return;
-            }
-
+    return;
+}
 
             var point = {
 
@@ -3788,30 +3753,31 @@ function finishMyTurn() {
             currentTurnIndex
         ] !== myName
     ) {
-
         return;
     }
 
-    // 마우스/터치를 떼지 않고 '그만' 버튼을 눌렀을 경우를 대비해 선 강제 종료
-    if (isDrawing || currentStroke.length > 0) {
-        stopDraw();
+    // 마우스를 떼지 않았거나 drawing 중인 경우 잔여 stroke 저장
+    if (isDrawing) {
+        isDrawing = false;
+    }
+
+    if (currentStroke.length > 0) {
+        myTurnStrokes.push(currentStroke);
+        currentStroke = [];
     }
 
     if (
         myTurnStrokes.length === 0
     ) {
-
         alert(
             "그림을 조금이라도 그려주세요!"
         );
-
         return;
     }
 
-    var strokesToSend =
-        myTurnStrokes.slice();
+    var strokesToSend = myTurnStrokes.slice();
 
-    // 턴을 넘기기 전에 내가 그린 마지막 선을 내 화면 history에도 먼저 추가
+    // ★ [추가] 턴을 넘기기 전, 내가 그린 스트로크들을 로컬 history에도 바로 기록
     for (var i = 0; i < strokesToSend.length; i++) {
         turnsHistory.push({
             player: myName,
@@ -3820,21 +3786,13 @@ function finishMyTurn() {
     }
 
     sendData({
-
-        type:
-            "REQ_NEXT_TURN",
-
-        player:
-            myName,
-
-        strokes:
-            strokesToSend
+        type: "REQ_NEXT_TURN",
+        player: myName,
+        strokes: strokesToSend
     });
 
     myTurnStrokes = [];
-
     currentStroke = [];
-
     isDrawing = false;
 }
 
