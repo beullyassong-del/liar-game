@@ -1708,61 +1708,41 @@ if (
             data.strokes
         )
     ) {
-
         for (
             var i = 0;
             i < data.strokes.length;
             i++
         ) {
-
             if (
                 data.strokes[i] &&
                 data.strokes[i].length > 0
             ) {
-
                 turnsHistory.push({
-
-                    player:
-                        data.player,
-
-                    path:
-                        data.strokes[i]
+                    player: data.player,
+                    path: data.strokes[i]
                 });
             }
         }
     }
 
-
     currentTurnIndex++;
-
 
     if (
         currentTurnIndex >=
         playerOrder.length
     ) {
-
         currentTurnIndex = 0;
     }
 
-
     var nextPayload = {
-
-        type:
-            "SYNC_TURNS",
-
-        history:
-            turnsHistory,
-
-        turnIndex:
-            currentTurnIndex
+        type: "SYNC_TURNS",
+        history: turnsHistory,
+        turnIndex: currentTurnIndex
     };
 
+    broadcastData(nextPayload);
 
-    broadcastData(
-        nextPayload
-    );
-
-    // 방장 본인의 캔버스/상태도 갱신
+    // 방장 본인의 캔버스도 동기화 후 다시 그리기
     turnsHistory = nextPayload.history;
     currentTurnIndex = nextPayload.turnIndex;
     redrawCanvas();
