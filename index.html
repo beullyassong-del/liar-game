@@ -2,19 +2,19 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>그림 라이어 게임</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: manipulation; }
-        body { background-color: #f4f6f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 15px; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         
-        #header-bar { width: 100%; max-width: 600px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; text-align: center; }
+        #header-bar { width: 100%; max-width: 600px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
         .player-badge { display: inline-block; background: #007bff; color: white; padding: 6px 14px; border-radius: 15px; margin: 3px; font-weight: bold; font-size: 15px; }
 
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
         h1, h2 { margin-top: 0; color: #333; }
-        button { width: 100%; padding: 12px; margin: 6px 0; border: none; border-radius: 6px; background-color: #007bff; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button { width: 100%; padding: 12px; margin: 6px 0; border: none; border-radius: 6px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; transition: 0.2s; }
         button:hover { background-color: #0056b3; }
         button.secondary { background-color: #6c757d; }
         button.secondary:hover { background-color: #545b62; }
@@ -37,36 +37,17 @@
         .count-btn { width: 40px; height: 40px; margin: 0; font-weight: bold; font-size: 18px; }
         .count-display { font-size: 18px; font-weight: bold; min-width: 40px; text-align: center; }
 
-        .ingame-keyword-bar { background-color: #e3f2fd; border: 2px solid #2196f3; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 18px; font-weight: bold; color: #0d47a1; }
+        /* 게임 상단 카드용 추가 스타일 */
+        .ingame-keyword-bar { background-color: #e3f2fd; border: 2px solid #2196f3; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 18px; font-weight: bold; color: #0d47a1; }
 
-        #turn-announcement { font-size: 20px; font-weight: bold; color: #ff5722; margin: 5px 0; min-height: 28px; }
-        #timer-display { font-size: 18px; font-weight: bold; color: #dc3545; margin-bottom: 5px; }
-        
-        /* 캔버스 래퍼 및 커서 영역 설정 */
-        #canvas-wrapper { position: relative; width: 100%; max-width: 400px; margin: 10px auto; touch-action: none; cursor: none; }
-        canvas { border: 3px solid #333; border-radius: 12px; background: white; touch-action: none; width: 100%; height: auto; aspect-ratio: 1 / 1; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; }
-        
-        /* 마우스 따라다니는 동그라미 커서 */
-        #cursor-circle {
-            position: absolute;
-            pointer-events: none;
-            border: 2px dashed #000;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-            box-shadow: 0 0 2px rgba(255,255,255,0.8);
-            z-index: 10;
-        }
-
-        .canvas-controls { display: flex; flex-direction: column; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px; }
-        .palette { display: flex; justify-content: center; gap: 8px; align-items: center; }
-        .color-circle { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid #fff; box-shadow: 0 0 3px rgba(0,0,0,0.4); }
-        .color-circle.selected { transform: scale(1.15); border: 2px solid #333; }
-        
-        .tool-row { display: flex; justify-content: center; align-items: center; gap: 10px; }
-        .size-picker { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: bold; }
-        
-        .draw-actions { display: flex; gap: 10px; margin-top: 5px; }
+        #turn-announcement { font-size: 22px; font-weight: bold; color: #ff5722; margin: 10px 0; min-height: 33px; }
+        #timer-display { font-size: 20px; font-weight: bold; color: #dc3545; margin-bottom: 10px; }
+        #canvas-container { position: relative; margin: 10px 0; }
+        canvas { border: 2px solid #333; border-radius: 8px; background: white; cursor: crosshair; touch-action: none; }
+        .canvas-controls { display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 10px; }
+        .canvas-controls input[type="color"] { width: 40px; height: 40px; padding: 0; border: none; cursor: pointer; }
+        .canvas-controls input[type="range"] { width: 100px; margin: 0; }
+        .draw-actions { display: flex; gap: 10px; }
 
         .vote-list { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
         .vote-btn { background-color: #f8f9fa; color: #333; border: 2px solid #007bff; font-weight: bold; }
@@ -179,38 +160,27 @@
 
         <!-- 7. 그림 그리기 및 순서 -->
         <div id="screen-drawing" class="screen">
+            <!-- 게임 중에도 제시어가 상단에 지속 표시됩니다 -->
             <div id="ingame-keyword-display" class="ingame-keyword-bar"></div>
 
-            <h3 id="turn-indicator" style="margin: 5px 0;">게임 진행 중</h3>
+            <h2 id="turn-indicator">게임 진행 중</h2>
             <div id="timer-display">⏱️ 남은 시간: 240초</div>
             <div id="turn-announcement"></div>
 
             <div class="canvas-controls">
-                <div class="palette">
-                    <div class="color-circle selected" style="background: #000000;" onclick="selectColor('#000000', this)"></div>
-                    <div class="color-circle" style="background: #ff3b30;" onclick="selectColor('#ff3b30', this)"></div>
-                    <div class="color-circle" style="background: #007aff;" onclick="selectColor('#007aff', this)"></div>
-                    <div class="color-circle" style="background: #34c759;" onclick="selectColor('#34c759', this)"></div>
-                    <div class="color-circle" style="background: #ffcc00;" onclick="selectColor('#ffcc00', this)"></div>
-                    <input type="color" id="brush-color" value="#000000" style="width: 32px; height: 32px; border:none; padding:0; background:none; cursor:pointer;" onchange="customColorChange(this)">
-                </div>
-                <div class="tool-row">
-                    <div class="size-picker">
-                        <span>두께</span>
-                        <input type="range" id="brush-size" min="2" max="30" value="6" style="width: 140px; margin: 0;" oninput="updateCursorSize()">
-                    </div>
-                </div>
+                <label style="display:inline; width:auto; margin:0;">색상: </label>
+                <input type="color" id="brush-color" value="#000000">
+                <label style="display:inline; width:auto; margin:0; margin-left:10px;">굵기: </label>
+                <input type="range" id="brush-size" min="1" max="20" value="3">
             </div>
 
-            <!-- 캔버스 및 동그라미 커서 영역 -->
-            <div id="canvas-wrapper">
+            <div id="canvas-container">
                 <canvas id="game-canvas" width="400" height="400"></canvas>
-                <div id="cursor-circle"></div>
             </div>
 
             <div class="draw-actions" id="my-turn-controls" style="display: none;">
-                <button class="secondary" onclick="resetMyStroke()">✏️ 다시 그리기</button>
-                <button style="background-color: #28a745;" onclick="finishMyTurn()">✅ 턴 넘기기</button>
+                <button class="secondary" onclick="resetMyStroke()">다시 그리기</button>
+                <button style="background-color: #28a745;" onclick="finishMyTurn()">그만 (다음 턴)</button>
             </div>
             
             <button onclick="requestEarlyVote()" style="background-color: #ff9800; margin-top: 10px;">🗳️ 지금 바로 투표하기</button>
@@ -263,11 +233,10 @@
         var currentSpies = [];
         var currentKeyword = "";
         var fakeKeyword = "";
-        var myDisplayKeyword = "";
+        var myDisplayKeyword = ""; // 플레이어가 게임 중에 화면 상단에서 볼 제시어
         var votesMap = {};
 
-        var canvas, ctx, wrapper, cursorCircle;
-        var currentColor = "#000000";
+        var canvas, ctx;
 
         var wordDatabase = {
             "동물": ["사자", "호랑이", "코끼리", "기린", "펭귄", "강아지", "고양이", "토끼", "판다", "독수리"],
@@ -280,39 +249,9 @@
         window.onload = function() {
             canvas = document.getElementById('game-canvas');
             ctx = canvas.getContext('2d');
-            wrapper = document.getElementById('canvas-wrapper');
-            cursorCircle = document.getElementById('cursor-circle');
-
             setupCanvasEvents();
             checkLinkJoin();
         };
-
-        function selectColor(color, elem) {
-            currentColor = color;
-            document.getElementById('brush-color').value = color;
-            var circles = document.querySelectorAll('.color-circle');
-            circles.forEach(c => c.classList.remove('selected'));
-            if(elem) elem.classList.add('selected');
-            updateCursorSize();
-        }
-
-        function customColorChange(picker) {
-            currentColor = picker.value;
-            var circles = document.querySelectorAll('.color-circle');
-            circles.forEach(c => c.classList.remove('selected'));
-            updateCursorSize();
-        }
-
-        function updateCursorSize() {
-            var size = parseInt(document.getElementById('brush-size').value);
-            var rect = canvas.getBoundingClientRect();
-            var scale = rect.width / canvas.width;
-            var displaySize = size * scale * 2; 
-
-            cursorCircle.style.width = displaySize + 'px';
-            cursorCircle.style.height = displaySize + 'px';
-            cursorCircle.style.borderColor = currentColor;
-        }
 
         function checkLinkJoin() {
             var urlParams = new URLSearchParams(window.location.search);
@@ -449,7 +388,7 @@
                 timeLeft = data.time;
                 document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
             } else if (data.type === 'DRAW_LIVE') {
-                if (data.sender !== myName) drawSegment(data.from, data.to, data.color, data.width);
+                if (data.sender !== myName) drawSegment(data.strokeData);
             } else if (data.type === 'SYNC_TURNS') {
                 turnsHistory = data.history;
                 currentTurnIndex = data.turnIndex;
@@ -601,6 +540,7 @@
                     var isSpy = currentSpies.includes(myName);
 
                     if (mode === "바보 모드") {
+                        // [바보 모드] 시민/라이어 타이틀을 표시하지 않음
                         roleTitle.style.display = "none";
                         document.getElementById('my-role').innerText = "";
                         
@@ -617,6 +557,7 @@
                         myDisplayKeyword = currentKeyword;
                         document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword + " (라이어: " + currentLiars.join(', ') + ")";
                     } else {
+                        // [일반 모드]
                         roleTitle.style.display = "block";
                         if (isLiar) {
                             document.getElementById('my-role').innerText = "라이어";
@@ -643,6 +584,7 @@
             currentTurnIndex = 0;
             votesMap = {};
 
+            // 게임 진행 화면 상단에 나의 제시어 표출
             document.getElementById('ingame-keyword-display').innerText = "📌 내 제시어: " + myDisplayKeyword;
 
             var myTurnNumber = playerOrder.indexOf(myName) + 1;
@@ -684,101 +626,76 @@
             hasDrawnThisTurn = false;
             isDrawing = false;
             currentStroke = [];
-            updateCursorSize();
         }
 
-        /* 캔버스 드로잉 및 커서 동그라미 처리 로직 */
         function setupCanvasEvents() {
-            var lastPos = null;
-
             function getPos(e) {
                 var rect = canvas.getBoundingClientRect();
-                var scaleX = canvas.width / rect.width;
-                var scaleY = canvas.height / rect.height;
-
                 var clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 var clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-                return {
-                    x: (clientX - rect.left) * scaleX,
-                    y: (clientY - rect.top) * scaleY,
-                    cssX: clientX - rect.left,
-                    cssY: clientY - rect.top
-                };
-            }
-
-            function updateCursorPosition(e) {
-                if (playerOrder[currentTurnIndex] !== myName || hasDrawnThisTurn) {
-                    cursorCircle.style.display = 'none';
-                    return;
-                }
-                var pos = getPos(e);
-                cursorCircle.style.display = 'block';
-                cursorCircle.style.left = pos.cssX + 'px';
-                cursorCircle.style.top = pos.cssY + 'px';
+                return { x: clientX - rect.left, y: clientY - rect.top };
             }
 
             function startDraw(e) {
                 if (playerOrder[currentTurnIndex] !== myName || hasDrawnThisTurn) return;
-                
                 isDrawing = true;
                 var pos = getPos(e);
-                lastPos = { x: pos.x, y: pos.y };
                 currentStroke = [];
-                updateCursorPosition(e);
+                
+                var point = {
+                    x: pos.x, y: pos.y,
+                    color: document.getElementById('brush-color').value,
+                    size: document.getElementById('brush-size').value,
+                    type: 'start'
+                };
+                currentStroke.push(point);
+                drawSegment(point);
+                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
             }
 
             function moveDraw(e) {
-                updateCursorPosition(e);
-                if (!isDrawing || hasDrawnThisTurn) return;
-
+                if (!isDrawing) return;
                 var pos = getPos(e);
-                var width = parseInt(document.getElementById('brush-size').value);
-
-                drawSegment(lastPos, { x: pos.x, y: pos.y }, currentColor, width);
-
-                var segmentData = {
-                    from: lastPos,
-                    to: { x: pos.x, y: pos.y },
-                    color: currentColor,
-                    width: width
+                var point = {
+                    x: pos.x, y: pos.y,
+                    color: document.getElementById('brush-color').value,
+                    size: document.getElementById('brush-size').value,
+                    type: 'move'
                 };
-                currentStroke.push(segmentData);
-                sendData({ type: 'DRAW_LIVE', ...segmentData, sender: myName });
-
-                lastPos = { x: pos.x, y: pos.y };
+                currentStroke.push(point);
+                drawSegment(point);
+                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
             }
 
             function stopDraw() {
                 if (isDrawing) {
                     isDrawing = false;
-                    hasDrawnThisTurn = true; // 선 1개 그리기 완료시 추가 그리기 금지
-                    cursorCircle.style.display = 'none';
+                    hasDrawnThisTurn = true;
                 }
             }
-
-            wrapper.addEventListener('mouseenter', updateCursorPosition);
-            wrapper.addEventListener('mouseleave', function() { cursorCircle.style.display = 'none'; });
 
             canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mousemove', moveDraw);
             canvas.addEventListener('mouseup', stopDraw);
 
-            canvas.addEventListener('touchstart', function(e) { startDraw(e); e.preventDefault(); }, { passive: false });
-            canvas.addEventListener('touchmove', function(e) { moveDraw(e); e.preventDefault(); }, { passive: false });
+            canvas.addEventListener('touchstart', function(e) { startDraw(e); e.preventDefault(); });
+            canvas.addEventListener('touchmove', function(e) { moveDraw(e); e.preventDefault(); });
             canvas.addEventListener('touchend', stopDraw);
         }
 
-        // 실제 캔버스 선 그리기
-        function drawSegment(from, to, color, width) {
-            ctx.beginPath();
-            ctx.moveTo(from.x, from.y);
-            ctx.lineTo(to.x, to.y);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = width;
+        function drawSegment(pt) {
+            ctx.strokeStyle = pt.color;
+            ctx.lineWidth = pt.size;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.stroke();
+
+            if (pt.type === 'start') {
+                ctx.beginPath();
+                ctx.moveTo(pt.x, pt.y);
+            } else if (pt.type === 'move') {
+                ctx.lineTo(pt.x, pt.y);
+                ctx.stroke();
+            }
         }
 
         function redrawCanvas() {
@@ -786,8 +703,7 @@
             for (var i = 0; i < turnsHistory.length; i++) {
                 var stroke = turnsHistory[i].path;
                 for (var j = 0; j < stroke.length; j++) {
-                    var seg = stroke[j];
-                    drawSegment(seg.from, seg.to, seg.color, seg.width);
+                    drawSegment(stroke[j]);
                 }
             }
         }
