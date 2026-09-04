@@ -1,827 +1,3435 @@
+```html
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>그림 라이어 게임</title>
+
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f4f6f9; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        
-        #header-bar { width: 100%; max-width: 600px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
-        .player-badge { display: inline-block; background: #007bff; color: white; padding: 6px 14px; border-radius: 15px; margin: 3px; font-weight: bold; font-size: 15px; }
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 500px; text-align: center; }
-        h1, h2 { margin-top: 0; color: #333; }
-        button { width: 100%; padding: 12px; margin: 6px 0; border: none; border-radius: 6px; background-color: #007bff; color: white; font-size: 16px; cursor: pointer; transition: 0.2s; }
-        button:hover { background-color: #0056b3; }
-        button.secondary { background-color: #6c757d; }
-        button.secondary:hover { background-color: #545b62; }
-        
-        input, select { width: 100%; padding: 10px; margin: 6px 0 14px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        label { font-weight: bold; display: block; text-align: left; font-size: 14px; color: #555; }
-        
-        .screen { display: none; }
-        .active { display: block; }
-        .info-box { background: #e9ecef; padding: 10px; border-radius: 6px; word-break: break-all; margin: 10px 0; font-size: 14px; }
-        .status-text { color: #28a745; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
-        
-        .settings-box { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; text-align: left; margin-bottom: 15px; }
-        .error-message { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 12px; border-radius: 6px; margin: 10px 0; font-weight: bold; display: none; }
+        body {
+            background-color: #f4f6f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
 
-        #roulette-box { font-size: 28px; font-weight: bold; color: #dc3545; padding: 20px; border: 3px dashed #007bff; border-radius: 10px; margin: 15px 0; background: #f8f9fa; }
-        .result-keyword { font-size: 20px; color: #28a745; margin-top: 10px; font-weight: bold; }
+        #header-bar {
+            width: 100%;
+            max-width: 600px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
 
-        .count-control { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-        .count-btn { width: 40px; height: 40px; margin: 0; font-weight: bold; font-size: 18px; }
-        .count-display { font-size: 18px; font-weight: bold; min-width: 40px; text-align: center; }
+        .player-badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 15px;
+            margin: 3px;
+            font-weight: bold;
+            font-size: 15px;
+        }
 
-        /* 게임 상단 카드용 추가 스타일 */
-        .ingame-keyword-bar { background-color: #e3f2fd; border: 2px solid #2196f3; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 18px; font-weight: bold; color: #0d47a1; }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
 
-        #turn-announcement { font-size: 22px; font-weight: bold; color: #ff5722; margin: 10px 0; min-height: 33px; }
-        #timer-display { font-size: 20px; font-weight: bold; color: #dc3545; margin-bottom: 10px; }
-        #canvas-container { position: relative; margin: 10px 0; }
-        canvas { border: 2px solid #333; border-radius: 8px; background: white; cursor: crosshair; touch-action: none; }
-        .canvas-controls { display: flex; gap: 8px; align-items: center; justify-content: center; margin-bottom: 10px; }
-        .canvas-controls input[type="color"] { width: 40px; height: 40px; padding: 0; border: none; cursor: pointer; }
-        .canvas-controls input[type="range"] { width: 100px; margin: 0; }
-        .draw-actions { display: flex; gap: 10px; }
+        h1, h2 {
+            margin-top: 0;
+            color: #333;
+        }
 
-        .vote-list { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
-        .vote-btn { background-color: #f8f9fa; color: #333; border: 2px solid #007bff; font-weight: bold; }
-        .vote-btn:hover { background-color: #007bff; color: white; }
-        .vote-btn.selected { background-color: #28a745; color: white; border-color: #28a745; }
-        .result-box { padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 18px; font-weight: bold; }
-        .win { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .lose { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 6px 0;
+            border: none;
+            border-radius: 6px;
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button.secondary {
+            background-color: #6c757d;
+        }
+
+        button.secondary:hover {
+            background-color: #545b62;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0 14px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            text-align: left;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        .info-box {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 6px;
+            word-break: break-all;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status-text {
+            color: #28a745;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .settings-box {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+            display: none;
+        }
+
+        #roulette-box {
+            font-size: 28px;
+            font-weight: bold;
+            color: #dc3545;
+            padding: 20px;
+            border: 3px dashed #007bff;
+            border-radius: 10px;
+            margin: 15px 0;
+            background: #f8f9fa;
+        }
+
+        .result-keyword {
+            font-size: 20px;
+            color: #28a745;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .count-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .count-btn {
+            width: 40px;
+            height: 40px;
+            margin: 0;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .count-display {
+            font-size: 18px;
+            font-weight: bold;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .ingame-keyword-bar {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #0d47a1;
+        }
+
+        #turn-announcement {
+            font-size: 22px;
+            font-weight: bold;
+            color: #ff5722;
+            margin: 10px 0;
+            min-height: 33px;
+        }
+
+        #timer-display {
+            font-size: 20px;
+            font-weight: bold;
+            color: #dc3545;
+            margin-bottom: 10px;
+        }
+
+        #canvas-container {
+            position: relative;
+            margin: 10px 0;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: white;
+            cursor: crosshair;
+            touch-action: none;
+            max-width: 100%;
+        }
+
+        .canvas-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .canvas-controls input[type="color"] {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            cursor: pointer;
+        }
+
+        .canvas-controls input[type="range"] {
+            width: 100px;
+            margin: 0;
+        }
+
+        .draw-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .draw-actions button {
+            width: 50%;
+        }
+
+        .vote-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .vote-btn {
+            background-color: #f8f9fa;
+            color: #333;
+            border: 2px solid #007bff;
+            font-weight: bold;
+        }
+
+        .vote-btn:hover {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .vote-btn.selected {
+            background-color: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .result-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .win {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .lose {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
+
 <body>
 
+    <!-- 상단 플레이어 정보 -->
     <div id="header-bar" style="display: none;">
         <strong>방 코드: <span id="display-room-code"></span></strong>
-        <div id="connection-status" class="status-text">연결 중...</div>
-        <div>참여 중인 사람 (<span id="player-count">0</span>명):</div>
+
+        <div id="connection-status" class="status-text">
+            연결 중...
+        </div>
+
+        <div>
+            참여 중인 사람
+            (<span id="player-count">0</span>명):
+        </div>
+
         <div id="player-list"></div>
     </div>
 
     <div class="card">
-        <!-- 1. 메인 화면 -->
+
+        <!-- 1. 메인 -->
         <div id="screen-main" class="screen active">
-            <h1>그림 라이어 게임</h1>
-            <button onclick="showScreen('screen-create')">게임 만들기</button>
-            <button onclick="showScreen('screen-join')" class="secondary">게임 참여하기</button>
+            <h1>🎨 그림 라이어 게임</h1>
+
+            <button onclick="showScreen('screen-create')">
+                게임 만들기
+            </button>
+
+            <button onclick="showScreen('screen-join')" class="secondary">
+                게임 참여하기
+            </button>
         </div>
+
 
         <!-- 2. 방 생성 -->
         <div id="screen-create" class="screen">
             <h2>방 만들기</h2>
+
             <label>닉네임</label>
-            <input type="text" id="create-name" placeholder="닉네임을 입력하세요">
-            <button onclick="createRoom()">방 생성하기</button>
-            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+
+            <input
+                type="text"
+                id="create-name"
+                placeholder="닉네임을 입력하세요"
+            >
+
+            <button onclick="createRoom()">
+                방 생성하기
+            </button>
+
+            <button
+                onclick="showScreen('screen-main')"
+                class="secondary"
+            >
+                뒤로가기
+            </button>
         </div>
 
-        <!-- 3. 방 참여 (코드) -->
+
+        <!-- 3. 코드로 참가 -->
         <div id="screen-join" class="screen">
             <h2>방 참여하기</h2>
-            <input type="text" id="join-code" placeholder="방 코드 입력">
-            <input type="text" id="join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="joinRoomByCode()">입장하기</button>
-            <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
+
+            <input
+                type="text"
+                id="join-code"
+                placeholder="방 코드 입력"
+            >
+
+            <input
+                type="text"
+                id="join-name"
+                placeholder="닉네임을 입력하세요"
+            >
+
+            <button onclick="joinRoomByCode()">
+                입장하기
+            </button>
+
+            <button
+                onclick="showScreen('screen-main')"
+                class="secondary"
+            >
+                뒤로가기
+            </button>
         </div>
 
-        <!-- 4. 방 참여 (링크) -->
+
+        <!-- 4. 링크로 참가 -->
         <div id="screen-link-join" class="screen">
             <h2>게임 참여하기</h2>
-            <p>방에 입장하기 위한 닉네임을 입력하세요.</p>
-            <input type="text" id="link-join-name" placeholder="닉네임을 입력하세요">
-            <button onclick="joinRoomByLink()">입장하기</button>
+
+            <p>
+                방에 입장하기 위한 닉네임을 입력하세요.
+            </p>
+
+            <input
+                type="text"
+                id="link-join-name"
+                placeholder="닉네임을 입력하세요"
+            >
+
+            <button onclick="joinRoomByLink()">
+                입장하기
+            </button>
         </div>
 
-        <!-- 5. 대기실 -->
+
+        <!-- 5. 로비 -->
         <div id="screen-lobby" class="screen">
             <h2>대기실</h2>
 
             <div class="settings-box">
-                <h3 style="margin-top: 0; font-size: 16px;">⚙️ 게임 설정</h3>
-                
+
+                <h3 style="margin-top: 0; font-size: 16px;">
+                    ⚙️ 게임 설정
+                </h3>
+
+                <!-- 주제 -->
                 <label>주제 선택</label>
-                <select id="setting-category" onchange="updateSettings()">
-                    <option value="동물">동물</option>
-                    <option value="음식">음식</option>
-                    <option value="인물">인물</option>
-                    <option value="게임">게임</option>
-                    <option value="애니">애니메이션</option>
+
+                <select
+                    id="setting-category"
+                    onchange="updateSettings()"
+                >
+                    <option value="동물">🐯 동물</option>
+                    <option value="음식">🍔 음식</option>
+                    <option value="인물">👤 인물</option>
+                    <option value="게임">🎮 게임</option>
+                    <option value="애니메이션">📺 애니메이션</option>
+                    <option value="탈것">🚗 탈것</option>
+                    <option value="직업">💼 직업</option>
+                    <option value="장소">📍 장소</option>
+                    <option value="스포츠">⚽ 스포츠</option>
+                    <option value="전자기기">💻 전자기기</option>
+                    <option value="학교">🏫 학교</option>
+                    <option value="자연">🌳 자연</option>
+                    <option value="과일">🍎 과일</option>
+                    <option value="디저트">🍰 디저트</option>
+                    <option value="음료">🥤 음료</option>
+                    <option value="가전제품">🏠 가전제품</option>
+                    <option value="생활용품">🧴 생활용품</option>
+                    <option value="캐릭터">🧸 캐릭터</option>
+                    <option value="나라">🌎 나라</option>
+                    <option value="우주">🚀 우주</option>
+                    <option value="공포">👻 공포</option>
                 </select>
 
+
+                <!-- 게임 모드 -->
                 <label>게임 모드</label>
-                <select id="setting-mode" onchange="updateSettings()">
-                    <option value="일반 모드">일반 모드</option>
-                    <option value="바보 모드">바보 모드</option>
-                    <option value="스파이 모드">스파이 모드</option>
+
+                <select
+                    id="setting-mode"
+                    onchange="updateSettings()"
+                >
+                    <option value="일반 모드">
+                        일반 모드
+                    </option>
+
+                    <option value="바보 모드">
+                        바보 모드
+                    </option>
+
+                    <option value="스파이 모드">
+                        스파이 모드
+                    </option>
                 </select>
 
+
+                <!-- 라이어 수 -->
                 <label>라이어 수</label>
+
                 <div class="count-control">
-                    <button class="count-btn secondary" onclick="changeLiarCount(-1)">-</button>
-                    <span id="liar-count-display" class="count-display">1</span>
-                    <button class="count-btn secondary" onclick="changeLiarCount(1)">+</button>
+
+                    <button
+                        class="count-btn secondary"
+                        onclick="changeLiarCount(-1)"
+                    >
+                        -
+                    </button>
+
+                    <span
+                        id="liar-count-display"
+                        class="count-display"
+                    >
+                        1
+                    </span>
+
+                    <button
+                        class="count-btn secondary"
+                        onclick="changeLiarCount(1)"
+                    >
+                        +
+                    </button>
+
                 </div>
+
             </div>
+
 
             <div>
                 <strong>방 코드:</strong>
+
                 <div id="lobby-code" class="info-box"></div>
             </div>
+
+
             <div>
                 <strong>초대 링크:</strong>
+
                 <div id="lobby-link" class="info-box"></div>
             </div>
 
-            <div id="start-warning" class="error-message">⚠️ 플레이어가 3명 이상이어야 게임을 시작할 수 있습니다!</div>
 
-            <button onclick="copyLink()">초대 링크 복사</button>
-            <button id="btn-start" onclick="startGame()" style="display: none; background-color: #28a745; margin-top: 10px;">게임 시작하기</button>
+            <div
+                id="start-warning"
+                class="error-message"
+            >
+                ⚠️ 플레이어가 3명 이상이어야 게임을 시작할 수 있습니다!
+            </div>
+
+
+            <button onclick="copyLink()">
+                🔗 초대 링크 복사
+            </button>
+
+            <button
+                id="btn-start"
+                onclick="startGame()"
+                style="
+                    display: none;
+                    background-color: #28a745;
+                    margin-top: 10px;
+                "
+            >
+                🎮 게임 시작하기
+            </button>
         </div>
+
 
         <!-- 6. 역할 추첨 -->
         <div id="screen-game" class="screen">
-            <h2>역할 추첨</h2>
-            <div id="roulette-box">추첨 준비 중...</div>
-            <div id="role-result-box" style="display: none;">
-                <p id="my-role-title">당신의 역할:</p>
-                <div id="my-role" style="font-size: 26px; font-weight: bold; color: #007bff;"></div>
-                <div id="my-keyword" class="result-keyword"></div>
+
+            <h2>🎲 역할 추첨</h2>
+
+            <div id="roulette-box">
+                추첨 준비 중...
             </div>
+
+            <div
+                id="role-result-box"
+                style="display: none;"
+            >
+
+                <p id="my-role-title">
+                    당신의 역할:
+                </p>
+
+                <div
+                    id="my-role"
+                    style="
+                        font-size: 26px;
+                        font-weight: bold;
+                        color: #007bff;
+                    "
+                ></div>
+
+                <div
+                    id="my-keyword"
+                    class="result-keyword"
+                ></div>
+
+            </div>
+
         </div>
 
-        <!-- 7. 그림 그리기 및 순서 -->
-        <div id="screen-drawing" class="screen">
-            <!-- 게임 중에도 제시어가 상단에 지속 표시됩니다 -->
-            <div id="ingame-keyword-display" class="ingame-keyword-bar"></div>
 
-            <h2 id="turn-indicator">게임 진행 중</h2>
-            <div id="timer-display">⏱️ 남은 시간: 240초</div>
+        <!-- 7. 그림 그리기 -->
+        <div id="screen-drawing" class="screen">
+
+            <div
+                id="ingame-keyword-display"
+                class="ingame-keyword-bar"
+            ></div>
+
+
+            <h2 id="turn-indicator">
+                게임 진행 중
+            </h2>
+
+
+            <div id="timer-display">
+                ⏱️ 남은 시간: 240초
+            </div>
+
+
             <div id="turn-announcement"></div>
 
+
+            <!-- 그림 설정 -->
             <div class="canvas-controls">
-                <label style="display:inline; width:auto; margin:0;">색상: </label>
-                <input type="color" id="brush-color" value="#000000">
-                <label style="display:inline; width:auto; margin:0; margin-left:10px;">굵기: </label>
-                <input type="range" id="brush-size" min="1" max="20" value="3">
+
+                <label
+                    style="
+                        display:inline;
+                        width:auto;
+                        margin:0;
+                    "
+                >
+                    색상:
+                </label>
+
+                <input
+                    type="color"
+                    id="brush-color"
+                    value="#000000"
+                >
+
+
+                <label
+                    style="
+                        display:inline;
+                        width:auto;
+                        margin:0;
+                        margin-left:10px;
+                    "
+                >
+                    굵기:
+                </label>
+
+                <input
+                    type="range"
+                    id="brush-size"
+                    min="1"
+                    max="20"
+                    value="3"
+                >
+
             </div>
+
 
             <div id="canvas-container">
-                <canvas id="game-canvas" width="400" height="400"></canvas>
+
+                <canvas
+                    id="game-canvas"
+                    width="400"
+                    height="400"
+                ></canvas>
+
             </div>
 
-            <div class="draw-actions" id="my-turn-controls" style="display: none;">
-                <button class="secondary" onclick="resetMyStroke()">다시 그리기</button>
-                <button style="background-color: #28a745;" onclick="finishMyTurn()">그만 (다음 턴)</button>
+
+            <div
+                class="draw-actions"
+                id="my-turn-controls"
+                style="display: none;"
+            >
+
+                <button
+                    class="secondary"
+                    onclick="resetMyStroke()"
+                >
+                    다시 그리기
+                </button>
+
+                <button
+                    style="background-color: #28a745;"
+                    onclick="finishMyTurn()"
+                >
+                    그만 (다음 턴)
+                </button>
+
             </div>
-            
-            <button onclick="requestEarlyVote()" style="background-color: #ff9800; margin-top: 10px;">🗳️ 지금 바로 투표하기</button>
+
+
+            <button
+                onclick="requestEarlyVote()"
+                style="
+                    background-color: #ff9800;
+                    margin-top: 10px;
+                "
+            >
+                🗳️ 지금 바로 투표하기
+            </button>
+
         </div>
 
-        <!-- 8. 투표 화면 -->
+
+        <!-- 8. 투표 -->
         <div id="screen-vote" class="screen">
+
             <h2>🗳️ 라이어 투표</h2>
-            <p>누가 라이어인지 선택해주세요!</p>
-            <div id="vote-player-list" class="vote-list"></div>
-            <div id="vote-status" style="margin-top: 10px; color: #666;">투표 진행 중...</div>
+
+            <p>
+                누가 라이어인지 선택해주세요!
+            </p>
+
+            <div
+                id="vote-player-list"
+                class="vote-list"
+            ></div>
+
+            <div
+                id="vote-status"
+                style="
+                    margin-top: 10px;
+                    color: #666;
+                "
+            >
+                투표 진행 중...
+            </div>
+
         </div>
 
-        <!-- 9. 게임 결과 및 다시하기 -->
+
+        <!-- 9. 결과 -->
         <div id="screen-result" class="screen">
+
             <h2>🎉 게임 결과</h2>
-            <div id="result-box-ui" class="result-box"></div>
-            <div style="text-align: left; margin: 15px 0;">
-                <p><strong>진짜 라이어:</strong> <span id="actual-liars" style="color:#dc3545;"></span></p>
-                <p><strong>진짜 제시어:</strong> <span id="actual-keyword" style="color:#28a745;"></span></p>
-                <p id="fake-keyword-info" style="display:none;"><strong>라이어 가짜 제시어:</strong> <span id="actual-fake-keyword" style="color:#ff5722;"></span></p>
+
+            <div
+                id="result-box-ui"
+                class="result-box"
+            ></div>
+
+
+            <div
+                style="
+                    text-align: left;
+                    margin: 15px 0;
+                "
+            >
+
+                <p>
+                    <strong>진짜 라이어:</strong>
+                    <span
+                        id="actual-liars"
+                        style="color:#dc3545;"
+                    ></span>
+                </p>
+
+
+                <p>
+                    <strong>진짜 제시어:</strong>
+                    <span
+                        id="actual-keyword"
+                        style="color:#28a745;"
+                    ></span>
+                </p>
+
+
+                <p
+                    id="fake-keyword-info"
+                    style="display:none;"
+                >
+                    <strong>라이어 가짜 제시어:</strong>
+
+                    <span
+                        id="actual-fake-keyword"
+                        style="color:#ff5722;"
+                    ></span>
+                </p>
+
             </div>
-            <button id="btn-restart" onclick="restartGame()" style="background-color: #28a745; display: none;">🔄 다시하기 (대기실로)</button>
-            <p id="restart-wait-text" style="color: #666;">방장이 다시하기를 누를 때까지 기다려주세요...</p>
+
+
+            <button
+                id="btn-restart"
+                onclick="restartGame()"
+                style="
+                    background-color: #28a745;
+                    display: none;
+                "
+            >
+                🔄 다시하기 (대기실로)
+            </button>
+
+
+            <p
+                id="restart-wait-text"
+                style="color: #666;"
+            >
+                방장이 다시하기를 누를 때까지 기다려주세요...
+            </p>
+
         </div>
 
     </div>
 
+
     <script>
+
+        /* ==============================
+           기본 네트워크 변수
+        ============================== */
+
         var peer = null;
         var connections = [];
         var hostConn = null;
+
         var myName = "";
         var roomCode = "";
+
         var playersMap = {};
         var playerOrder = [];
+
         var isHost = false;
 
-        var gameSettings = { category: "동물", mode: "일반 모드", liarCount: 1 };
+
+        /* ==============================
+           게임 설정
+        ============================== */
+
+        var gameSettings = {
+            category: "동물",
+            mode: "일반 모드",
+            liarCount: 1
+        };
+
+
+        /* ==============================
+           게임 상태
+        ============================== */
 
         var currentTurnIndex = 0;
         var hasDrawnThisTurn = false;
         var isDrawing = false;
+
         var currentStroke = [];
         var turnsHistory = [];
 
         var gameTimer = null;
         var timeLeft = 240;
+
         var currentLiars = [];
         var currentSpies = [];
+
         var currentKeyword = "";
         var fakeKeyword = "";
-        var myDisplayKeyword = ""; // 플레이어가 게임 중에 화면 상단에서 볼 제시어
+
+        var myDisplayKeyword = "";
+
         var votesMap = {};
 
-        var canvas, ctx;
+
+        /* ==============================
+           Canvas
+        ============================== */
+
+        var canvas;
+        var ctx;
+
+
+        /* ==============================
+           제시어 데이터
+           총 21개 주제
+           각 30개
+        ============================== */
 
         var wordDatabase = {
-            "동물": ["사자", "호랑이", "코끼리", "기린", "펭귄", "강아지", "고양이", "토끼", "판다", "독수리"],
-            "음식": ["떡볶이", "비빔밥", "삼겹살", "치킨", "피자", "짜장면", "초밥", "햄버거", "파스타", "족발"],
-            "인물": ["세종대왕", "이순신", "손흥민", "BTS", "유재석", "아이유", "아인슈타인", "아브라함 링컨", "뉴턴", "피카소"],
-            "게임": ["리그오브레전드", "마인크래프트", "메이플스토리", "오버워치", "배틀그라운드", "로블록스", "원신", "테일즈런너", "어몽어스", "카트라이더"],
-            "애니": ["짱구는 못말려", "도라에몽", "원피스", "나루토", "귀멸의 칼날", "명탐정 코난", "포켓몬스터", "드래곤볼", "진격의 거인", "스파이 패밀리"]
+
+            "동물": [
+                "사자", "호랑이", "코끼리", "기린", "펭귄",
+                "강아지", "고양이", "토끼", "판다", "독수리",
+                "원숭이", "고릴라", "하마", "코뿔소", "얼룩말",
+                "캥거루", "여우", "늑대", "곰", "치타",
+                "악어", "거북이", "돌고래", "고래", "상어",
+                "문어", "오징어", "개구리", "뱀", "공작새"
+            ],
+
+
+            "음식": [
+                "떡볶이", "비빔밥", "삼겹살", "치킨", "피자",
+                "짜장면", "초밥", "햄버거", "파스타", "족발",
+                "김치찌개", "된장찌개", "갈비", "냉면", "김밥",
+                "라면", "돈까스", "우동", "타코", "샌드위치",
+                "카레", "오므라이스", "붕어빵", "호떡", "팥빙수",
+                "케이크", "쿠키", "아이스크림", "마카롱", "찜닭"
+            ],
+
+
+            "인물": [
+                "세종대왕", "이순신", "손흥민", "BTS", "유재석",
+                "아이유", "아인슈타인", "아브라함 링컨", "뉴턴", "피카소",
+                "김연아", "류현진", "봉준호", "마이클 잭슨", "엘비스 프레슬리",
+                "스티브 잡스", "빌 게이츠", "일론 머스크", "마크 저커버그", "톰 크루즈",
+                "레오나르도 디카프리오", "찰리 채플린", "갈릴레오", "셰익스피어", "모차르트",
+                "베토벤", "레오나르도 다빈치", "미켈란젤로", "마틴 루터 킹", "나폴레옹"
+            ],
+
+
+            "게임": [
+                "리그오브레전드", "마인크래프트", "메이플스토리", "오버워치", "배틀그라운드",
+                "로블록스", "원신", "테일즈런너", "어몽어스", "카트라이더",
+                "발로란트", "포트나이트", "GTA5", "피파온라인", "스타크래프트",
+                "워크래프트", "서든어택", "던전앤파이터", "메탈슬러그", "젤다의 전설",
+                "포켓몬스터", "모여봐요 동물의 숲", "슈퍼마리오", "철권", "스트리트파이터",
+                "데드바이데이라이트", "파이널판타지", "몬스터헌터", "테트리스", "클래시로얄"
+            ],
+
+
+            "애니메이션": [
+                "짱구는 못말려", "도라에몽", "원피스", "나루토", "귀멸의 칼날",
+                "명탐정 코난", "포켓몬스터", "드래곤볼", "진격의 거인", "스파이 패밀리",
+                "주술회전", "원펀맨", "나의 히어로 아카데미아", "블리치", "슬램덩크",
+                "하이큐", "도쿄구울", "강철의 연금술사", "헌터X헌터", "데스노트",
+                "세일러문", "디지몬", "아따맘마", "아기공룡 둘리", "검정고무신",
+                "캐릭캐릭 체인지", "이누야샤", "에반게리온", "체인소맨", "스파이더맨"
+            ],
+
+
+            "탈것": [
+                "자동차", "버스", "택시", "기차", "지하철",
+                "비행기", "헬리콥터", "배", "잠수함", "자전거",
+                "오토바이", "킥보드", "스케이트보드", "트럭", "경찰차",
+                "구급차", "소방차", "경주용차", "트랙터", "굴착기",
+                "케이블카", "요트", "범선", "전투기", "로켓",
+                "우주선", "열기구", "전기자전거", "스쿠터", "지게차"
+            ],
+
+
+            "직업": [
+                "의사", "간호사", "경찰", "소방관", "교사",
+                "요리사", "파일럿", "군인", "변호사", "판사",
+                "프로그래머", "개발자", "디자이너", "배우", "가수",
+                "운동선수", "축구선수", "야구선수", "농부", "어부",
+                "기자", "사진작가", "유튜버", "스트리머", "건축가",
+                "과학자", "화가", "작가", "배달기사", "미용사"
+            ],
+
+
+            "장소": [
+                "학교", "병원", "공원", "놀이공원", "마트",
+                "편의점", "은행", "우체국", "공항", "기차역",
+                "도서관", "영화관", "PC방", "노래방", "카페",
+                "식당", "수영장", "헬스장", "박물관", "미술관",
+                "동물원", "수족관", "해변", "산", "사막",
+                "숲", "호텔", "경찰서", "소방서", "대학교"
+            ],
+
+
+            "스포츠": [
+                "축구", "야구", "농구", "배구", "탁구",
+                "테니스", "배드민턴", "수영", "복싱", "골프",
+                "스키", "스노보드", "양궁", "펜싱", "씨름",
+                "레슬링", "마라톤", "볼링", "당구", "체조",
+                "태권도", "유도", "사격", "승마", "서핑",
+                "스케이트", "하키", "럭비", "피겨스케이팅", "컬링"
+            ],
+
+
+            "전자기기": [
+                "스마트폰", "아이폰", "갤럭시", "컴퓨터", "노트북",
+                "태블릿", "스마트워치", "TV", "카메라", "드론",
+                "키보드", "마우스", "헤드셋", "스피커", "마이크",
+                "게임기", "닌텐도", "플레이스테이션", "엑스박스", "모니터",
+                "프린터", "USB", "충전기", "리모컨", "프로젝터",
+                "VR기기", "로봇청소기", "에어팟", "이어폰", "보조배터리"
+            ],
+
+
+            "학교": [
+                "연필", "지우개", "책", "공책", "가방",
+                "칠판", "책상", "의자", "교과서", "컴퍼스",
+                "자", "가위", "풀", "색연필", "사인펜",
+                "크레파스", "필통", "급식", "교복", "체육복",
+                "운동장", "교무실", "교장실", "도서관", "시험지",
+                "숙제", "수학", "과학", "국어", "체육"
+            ],
+
+
+            "자연": [
+                "산", "바다", "강", "호수", "폭포",
+                "화산", "사막", "숲", "동굴", "섬",
+                "구름", "비", "눈", "번개", "무지개",
+                "태양", "달", "별", "바람", "파도",
+                "꽃", "나무", "풀", "버섯", "해바라기",
+                "장미", "벚꽃", "단풍", "야자수", "선인장"
+            ],
+
+
+            "과일": [
+                "사과", "바나나", "딸기", "포도", "수박",
+                "멜론", "복숭아", "배", "귤", "오렌지",
+                "망고", "파인애플", "키위", "체리", "레몬",
+                "자두", "감", "무화과", "블루베리", "라즈베리",
+                "석류", "코코넛", "두리안", "아보카도", "참외",
+                "자몽", "매실", "토마토", "망고스틴", "용과"
+            ],
+
+
+            "디저트": [
+                "케이크", "쿠키", "아이스크림", "마카롱", "도넛",
+                "푸딩", "와플", "팬케이크", "붕어빵", "호떡",
+                "팥빙수", "초콜릿", "사탕", "젤리", "카라멜",
+                "머핀", "브라우니", "티라미수", "에클레어", "타르트",
+                "크루아상", "롤케이크", "치즈케이크", "초코파이", "약과",
+                "인절미", "송편", "경단", "솜사탕", "쿠키앤크림"
+            ],
+
+
+            "음료": [
+                "콜라", "사이다", "커피", "아메리카노", "라떼",
+                "녹차", "홍차", "우유", "초코우유", "딸기우유",
+                "주스", "오렌지주스", "사과주스", "포도주스", "레몬에이드",
+                "탄산수", "에너지드링크", "밀크티", "버블티", "요구르트",
+                "식혜", "수정과", "코코아", "핫초코", "물",
+                "스무디", "쉐이크", "복숭아아이스티", "유자차", "생강차"
+            ],
+
+
+            "가전제품": [
+                "냉장고", "세탁기", "에어컨", "선풍기", "전자레인지",
+                "청소기", "TV", "공기청정기", "가습기", "제습기",
+                "전기밥솥", "토스터기", "믹서기", "커피머신", "식기세척기",
+                "건조기", "다리미", "헤어드라이어", "전기포트", "오븐",
+                "식기건조기", "전기장판", "비데", "로봇청소기", "스팀다리미",
+                "에어프라이어", "정수기", "전자저울", "전기히터", "서큘레이터"
+            ],
+
+
+            "생활용품": [
+                "칫솔", "치약", "수건", "비누", "샴푸",
+                "빗", "우산", "휴지", "컵", "접시",
+                "숟가락", "젓가락", "포크", "칼", "냄비",
+                "프라이팬", "이불", "베개", "옷걸이", "가방",
+                "지갑", "열쇠", "거울", "시계", "안경",
+                "볼펜", "노트", "가위", "테이프", "자물쇠"
+            ],
+
+
+            "캐릭터": [
+                "미키마우스", "미니마우스", "도널드덕", "푸우", "스누피",
+                "헬로키티", "케로피", "마이멜로디", "쿠로미", "폼폼푸린",
+                "피카츄", "이브이", "꼬부기", "파이리", "이상해씨",
+                "짱구", "도라에몽", "루피", "나루토", "손오공",
+                "슈퍼마리오", "루이지", "커비", "링크", "소닉",
+                "스폰지밥", "톰", "제리", "미니언", "심슨"
+            ],
+
+
+            "나라": [
+                "대한민국", "일본", "중국", "미국", "영국",
+                "프랑스", "독일", "이탈리아", "스페인", "캐나다",
+                "호주", "브라질", "멕시코", "인도", "태국",
+                "베트남", "필리핀", "싱가포르", "러시아", "터키",
+                "이집트", "그리스", "스위스", "노르웨이", "스웨덴",
+                "핀란드", "뉴질랜드", "아르헨티나", "남아공", "네덜란드"
+            ],
+
+
+            "우주": [
+                "태양", "달", "지구", "화성", "목성",
+                "토성", "천왕성", "해왕성", "수성", "금성",
+                "명왕성", "별", "블랙홀", "은하", "우주선",
+                "로켓", "우주인", "위성", "혜성", "소행성",
+                "운석", "성운", "행성", "달 탐사선", "화성 탐사선",
+                "국제우주정거장", "태양계", "은하수", "외계인", "중력"
+            ],
+
+
+            "공포": [
+                "귀신", "좀비", "뱀파이어", "늑대인간", "미라",
+                "유령", "저주", "묘지", "폐가", "어두운 숲",
+                "관", "해골", "거울", "인형", "도끼",
+                "피", "악몽", "괴물", "마녀", "호러영화",
+                "좀비병원", "지하실", "엘리베이터", "무서운 학교", "귀신의 집",
+                "검은 고양이", "검은 그림자", "악마", "비명", "오싹한 인형"
+            ]
+
         };
 
+
+        /* ==============================
+           페이지 시작
+        ============================== */
+
         window.onload = function() {
-            canvas = document.getElementById('game-canvas');
-            ctx = canvas.getContext('2d');
+
+            canvas =
+                document.getElementById('game-canvas');
+
+            ctx =
+                canvas.getContext('2d');
+
             setupCanvasEvents();
+
             checkLinkJoin();
         };
 
+
+        /* ==============================
+           링크 참가 확인
+        ============================== */
+
         function checkLinkJoin() {
-            var urlParams = new URLSearchParams(window.location.search);
-            var room = urlParams.get('room');
+
+            var urlParams =
+                new URLSearchParams(window.location.search);
+
+            var room =
+                urlParams.get('room');
+
             if (room) {
-                roomCode = room.toUpperCase();
-                showScreen('screen-link-join');
+
+                roomCode =
+                    room.toUpperCase();
+
+                showScreen(
+                    'screen-link-join'
+                );
             }
         }
 
+
+        /* ==============================
+           화면 전환
+        ============================== */
+
         function showScreen(screenId) {
-            var screens = document.querySelectorAll('.screen');
-            for (var i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
-            document.getElementById(screenId).classList.add('active');
+
+            var screens =
+                document.querySelectorAll('.screen');
+
+            for (
+                var i = 0;
+                i < screens.length;
+                i++
+            ) {
+
+                screens[i]
+                    .classList
+                    .remove('active');
+            }
+
+            document
+                .getElementById(screenId)
+                .classList
+                .add('active');
         }
+
+
+        /* ==============================
+           방 코드
+        ============================== */
 
         function getRandomCode() {
-            return Math.random().toString(36).substring(2, 7).toUpperCase();
+
+            return Math.random()
+                .toString(36)
+                .substring(2, 7)
+                .toUpperCase();
         }
+
+
+        /* ==============================
+           방 생성
+        ============================== */
 
         function createRoom() {
-            var name = document.getElementById('create-name').value.trim();
-            if (!name) return alert("닉네임을 입력해주세요!");
+
+            var name =
+                document
+                    .getElementById('create-name')
+                    .value
+                    .trim();
+
+            if (!name) {
+
+                return alert(
+                    "닉네임을 입력해주세요!"
+                );
+            }
+
 
             myName = name;
-            roomCode = getRandomCode();
+
+            roomCode =
+                getRandomCode();
+
             isHost = true;
+
             playersMap = {};
+
             playersMap[myName] = true;
 
-            peer = new Peer('liar-room-' + roomCode);
 
-            peer.on('open', function() { enterLobby(); });
-            peer.on('connection', function(conn) {
-                connections.push(conn);
-                conn.on('data', function(data) { handleNetworkData(data); });
-            });
-            peer.on('error', function(err) { alert("방 생성 에러: " + err.type); });
+            peer =
+                new Peer(
+                    'liar-room-' + roomCode
+                );
+
+
+            peer.on(
+                'open',
+                function() {
+
+                    enterLobby();
+                }
+            );
+
+
+            peer.on(
+                'connection',
+                function(conn) {
+
+                    connections.push(conn);
+
+                    conn.on(
+                        'data',
+                        function(data) {
+
+                            handleNetworkData(data);
+                        }
+                    );
+                }
+            );
+
+
+            peer.on(
+                'error',
+                function(err) {
+
+                    alert(
+                        "방 생성 에러: " + err.type
+                    );
+                }
+            );
         }
+
+
+        /* ==============================
+           코드 참가
+        ============================== */
 
         function joinRoomByCode() {
-            var code = document.getElementById('join-code').value.trim().toUpperCase();
-            var name = document.getElementById('join-name').value.trim();
-            if (!code || !name) return alert("방 코드와 닉네임을 모두 입력해주세요!");
-            roomCode = code; myName = name; connectToHost();
+
+            var code =
+                document
+                    .getElementById('join-code')
+                    .value
+                    .trim()
+                    .toUpperCase();
+
+
+            var name =
+                document
+                    .getElementById('join-name')
+                    .value
+                    .trim();
+
+
+            if (!code || !name) {
+
+                return alert(
+                    "방 코드와 닉네임을 모두 입력해주세요!"
+                );
+            }
+
+
+            roomCode = code;
+
+            myName = name;
+
+            connectToHost();
         }
+
+
+        /* ==============================
+           링크 참가
+        ============================== */
 
         function joinRoomByLink() {
-            var name = document.getElementById('link-join-name').value.trim();
-            if (!name) return alert("닉네임을 입력해주세요!");
-            myName = name; connectToHost();
+
+            var name =
+                document
+                    .getElementById('link-join-name')
+                    .value
+                    .trim();
+
+
+            if (!name) {
+
+                return alert(
+                    "닉네임을 입력해주세요!"
+                );
+            }
+
+
+            myName = name;
+
+            connectToHost();
         }
+
+
+        /* ==============================
+           방장 연결
+        ============================== */
 
         function connectToHost() {
-            peer = new Peer();
-            peer.on('open', function() {
-                hostConn = peer.connect('liar-room-' + roomCode);
-                hostConn.on('open', function() {
-                    hostConn.send({ type: 'JOIN', name: myName });
-                    enterLobby();
-                });
-                hostConn.on('data', handleNetworkData);
-            });
-            peer.on('error', function() { alert("방 접속 실패! 코드를 확인해주세요."); });
+
+            peer =
+                new Peer();
+
+
+            peer.on(
+                'open',
+                function() {
+
+                    hostConn =
+                        peer.connect(
+                            'liar-room-' + roomCode
+                        );
+
+
+                    hostConn.on(
+                        'open',
+                        function() {
+
+                            hostConn.send({
+                                type: 'JOIN',
+                                name: myName
+                            });
+
+                            enterLobby();
+                        }
+                    );
+
+
+                    hostConn.on(
+                        'data',
+                        handleNetworkData
+                    );
+                }
+            );
+
+
+            peer.on(
+                'error',
+                function() {
+
+                    alert(
+                        "방 접속 실패! 코드를 확인해주세요."
+                    );
+                }
+            );
         }
 
+
+        /* ==============================
+           데이터 전송
+        ============================== */
+
         function sendData(data) {
+
             if (isHost) {
+
                 handleNetworkData(data);
-            } else if (hostConn && hostConn.open) {
+
+            } else if (
+                hostConn &&
+                hostConn.open
+            ) {
+
                 hostConn.send(data);
             }
         }
 
+
+        /* ==============================
+           네트워크 데이터 처리
+        ============================== */
+
         function handleNetworkData(data) {
+
+
+            /* ===== 방장 전용 처리 ===== */
+
             if (isHost) {
+
+
                 if (data.type === 'JOIN') {
-                    playersMap[data.name] = true;
+
+                    playersMap[data.name] =
+                        true;
+
+
                     renderPlayers();
-                    broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
+
+
+                    broadcastData({
+                        type: 'SYNC',
+                        players: playersMap,
+                        settings: gameSettings
+                    });
+
                     return;
                 }
-                if (data.type === 'REQ_NEXT_TURN') {
-                    if (data.stroke && data.stroke.length > 0) {
-                        turnsHistory.push({ player: data.player, path: data.stroke });
+
+
+                if (
+                    data.type ===
+                    'REQ_NEXT_TURN'
+                ) {
+
+                    if (
+                        data.stroke &&
+                        data.stroke.length > 0
+                    ) {
+
+                        turnsHistory.push({
+                            player: data.player,
+                            path: data.stroke
+                        });
                     }
-                    currentTurnIndex = (currentTurnIndex + 1) % playerOrder.length;
-                    var syncPayload = { type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex };
+
+
+                    currentTurnIndex =
+                        (
+                            currentTurnIndex + 1
+                        ) %
+                        playerOrder.length;
+
+
+                    var syncPayload = {
+                        type: 'SYNC_TURNS',
+                        history: turnsHistory,
+                        turnIndex: currentTurnIndex
+                    };
+
+
                     broadcastData(syncPayload);
-                    handleNetworkData(syncPayload);
+
+                    handleNetworkData(
+                        syncPayload
+                    );
+
                     return;
                 }
-                if (data.type === 'REQ_RESET_STROKE') {
+
+
+                if (
+                    data.type ===
+                    'REQ_RESET_STROKE'
+                ) {
+
                     currentStroke = [];
-                    var syncPayload = { type: 'SYNC_TURNS', history: turnsHistory, turnIndex: currentTurnIndex };
-                    broadcastData(syncPayload);
-                    handleNetworkData(syncPayload);
+
+
+                    var resetPayload = {
+                        type: 'SYNC_TURNS',
+                        history: turnsHistory,
+                        turnIndex: currentTurnIndex
+                    };
+
+
+                    broadcastData(resetPayload);
+
+                    handleNetworkData(
+                        resetPayload
+                    );
+
                     return;
                 }
-                if (data.type === 'DRAW_LIVE') {
+
+
+                if (
+                    data.type ===
+                    'DRAW_LIVE'
+                ) {
+
                     broadcastData(data);
-                }
-                if (data.type === 'REQ_START_VOTE') {
-                    clearInterval(gameTimer);
-                    var votePayload = { type: 'START_VOTE' };
-                    broadcastData(votePayload);
-                    handleNetworkData(votePayload);
+
                     return;
                 }
-                if (data.type === 'SUBMIT_VOTE') {
-                    votesMap[data.target] = (votesMap[data.target] || 0) + 1;
+
+
+                if (
+                    data.type ===
+                    'REQ_START_VOTE'
+                ) {
+
+                    clearInterval(gameTimer);
+
+
+                    var votePayload = {
+                        type: 'START_VOTE'
+                    };
+
+
+                    broadcastData(
+                        votePayload
+                    );
+
+                    handleNetworkData(
+                        votePayload
+                    );
+
+                    return;
+                }
+
+
+                if (
+                    data.type ===
+                    'SUBMIT_VOTE'
+                ) {
+
+                    votesMap[data.target] =
+                        (
+                            votesMap[data.target] || 0
+                        ) + 1;
+
+
                     var totalVotes = 0;
-                    for (var k in votesMap) totalVotes += votesMap[k];
-                    if (totalVotes >= Object.keys(playersMap).length) {
+
+
+                    for (
+                        var k in votesMap
+                    ) {
+
+                        totalVotes +=
+                            votesMap[k];
+                    }
+
+
+                    if (
+                        totalVotes >=
+                        Object.keys(playersMap).length
+                    ) {
+
                         calculateAndBroadcastResult();
                     }
+
                     return;
+                }
+
+            }
+
+
+            /* ===== 일반 플레이어 ===== */
+
+            if (data.type === 'SYNC') {
+
+                playersMap =
+                    data.players;
+
+                gameSettings =
+                    data.settings;
+
+
+                applySettingsUI();
+
+                renderPlayers();
+            }
+
+
+            else if (
+                data.type ===
+                'START_GAME_INFO'
+            ) {
+
+                playerOrder =
+                    data.order;
+
+                currentLiars =
+                    data.liars;
+
+                currentSpies =
+                    data.spies || [];
+
+                currentKeyword =
+                    data.keyword;
+
+                fakeKeyword =
+                    data.fakeKeyword || "";
+
+
+                handleGameStart(
+                    data.mode
+                );
+            }
+
+
+            else if (
+                data.type ===
+                'TIMER_TICK'
+            ) {
+
+                timeLeft =
+                    data.time;
+
+
+                document
+                    .getElementById(
+                        'timer-display'
+                    )
+                    .innerText =
+                    "⏱️ 남은 시간: "
+                    + timeLeft
+                    + "초";
+            }
+
+
+            else if (
+                data.type ===
+                'DRAW_LIVE'
+            ) {
+
+                if (
+                    data.sender !== myName
+                ) {
+
+                    drawSegment(
+                        data.strokeData
+                    );
                 }
             }
 
-            if (data.type === 'SYNC') {
-                playersMap = data.players;
-                gameSettings = data.settings;
-                applySettingsUI();
-                renderPlayers();
-            } else if (data.type === 'START_GAME_INFO') {
-                playerOrder = data.order;
-                currentLiars = data.liars;
-                currentSpies = data.spies || [];
-                currentKeyword = data.keyword;
-                fakeKeyword = data.fakeKeyword || "";
-                handleGameStart(data.mode);
-            } else if (data.type === 'TIMER_TICK') {
-                timeLeft = data.time;
-                document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
-            } else if (data.type === 'DRAW_LIVE') {
-                if (data.sender !== myName) drawSegment(data.strokeData);
-            } else if (data.type === 'SYNC_TURNS') {
-                turnsHistory = data.history;
-                currentTurnIndex = data.turnIndex;
+
+            else if (
+                data.type ===
+                'SYNC_TURNS'
+            ) {
+
+                turnsHistory =
+                    data.history;
+
+                currentTurnIndex =
+                    data.turnIndex;
+
+
                 redrawCanvas();
+
                 updateTurnState();
-            } else if (data.type === 'START_VOTE') {
+            }
+
+
+            else if (
+                data.type ===
+                'START_VOTE'
+            ) {
+
                 clearInterval(gameTimer);
+
                 openVoteScreen();
-            } else if (data.type === 'GAME_RESULT') {
-                renderGameResult(data.mostVoted, data.isCitizenWin);
-            } else if (data.type === 'GO_TO_LOBBY') {
+            }
+
+
+            else if (
+                data.type ===
+                'GAME_RESULT'
+            ) {
+
+                renderGameResult(
+                    data.mostVoted,
+                    data.isCitizenWin
+                );
+            }
+
+
+            else if (
+                data.type ===
+                'GO_TO_LOBBY'
+            ) {
+
                 enterLobby();
             }
         }
 
-        function enterLobby() {
-            showScreen('screen-lobby');
-            document.getElementById('header-bar').style.display = 'block';
-            document.getElementById('display-room-code').innerText = roomCode;
-            document.getElementById('lobby-code').innerText = roomCode;
-            document.getElementById('lobby-link').innerText = window.location.href.split('?')[0] + '?room=' + roomCode;
-            document.getElementById('connection-status').innerText = isHost ? "● 방장" : "● 참여 완료";
 
-            var categorySelect = document.getElementById('setting-category');
-            var modeSelect = document.getElementById('setting-mode');
+        /* ==============================
+           로비 진입
+        ============================== */
+
+        function enterLobby() {
+
+            showScreen(
+                'screen-lobby'
+            );
+
+
+            document
+                .getElementById(
+                    'header-bar'
+                )
+                .style
+                .display = 'block';
+
+
+            document
+                .getElementById(
+                    'display-room-code'
+                )
+                .innerText =
+                roomCode;
+
+
+            document
+                .getElementById(
+                    'lobby-code'
+                )
+                .innerText =
+                roomCode;
+
+
+            document
+                .getElementById(
+                    'lobby-link'
+                )
+                .innerText =
+                window.location.href
+                    .split('?')[0]
+                    + '?room='
+                    + roomCode;
+
+
+            document
+                .getElementById(
+                    'connection-status'
+                )
+                .innerText =
+                isHost
+                    ? "● 방장"
+                    : "● 참여 완료";
+
+
+            var categorySelect =
+                document.getElementById(
+                    'setting-category'
+                );
+
+
+            var modeSelect =
+                document.getElementById(
+                    'setting-mode'
+                );
+
 
             if (isHost) {
-                document.getElementById('btn-start').style.display = 'block';
-                categorySelect.disabled = false;
-                modeSelect.disabled = false;
+
+                document
+                    .getElementById(
+                        'btn-start'
+                    )
+                    .style
+                    .display = 'block';
+
+
+                categorySelect.disabled =
+                    false;
+
+                modeSelect.disabled =
+                    false;
+
             } else {
-                document.getElementById('btn-start').style.display = 'none';
-                categorySelect.disabled = true;
-                modeSelect.disabled = true;
+
+                document
+                    .getElementById(
+                        'btn-start'
+                    )
+                    .style
+                    .display = 'none';
+
+
+                categorySelect.disabled =
+                    true;
+
+                modeSelect.disabled =
+                    true;
             }
+
 
             renderPlayers();
         }
 
+
+        /* ==============================
+           라이어 수
+        ============================== */
+
         function changeLiarCount(delta) {
+
             if (!isHost) return;
-            var maxLiar = Math.max(1, Object.keys(playersMap).length - 1);
-            var newCount = gameSettings.liarCount + delta;
-            if (newCount >= 1 && newCount <= maxLiar) {
-                gameSettings.liarCount = newCount;
+
+
+            var maxLiar =
+                Math.max(
+                    1,
+                    Object.keys(playersMap).length - 1
+                );
+
+
+            var newCount =
+                gameSettings.liarCount + delta;
+
+
+            if (
+                newCount >= 1 &&
+                newCount <= maxLiar
+            ) {
+
+                gameSettings.liarCount =
+                    newCount;
+
                 updateSettings();
             }
         }
 
+
+        /* ==============================
+           설정 변경
+        ============================== */
+
         function updateSettings() {
+
             if (!isHost) return;
-            gameSettings.category = document.getElementById('setting-category').value;
-            gameSettings.mode = document.getElementById('setting-mode').value;
-            broadcastData({ type: 'SYNC', players: playersMap, settings: gameSettings });
-        }
 
-        function applySettingsUI() {
-            document.getElementById('setting-category').value = gameSettings.category;
-            document.getElementById('setting-mode').value = gameSettings.mode;
-            document.getElementById('liar-count-display').innerText = gameSettings.liarCount;
-        }
 
-        function renderPlayers() {
-            var listDiv = document.getElementById('player-list');
-            listDiv.innerHTML = '';
-            var names = Object.keys(playersMap);
-            document.getElementById('player-count').innerText = names.length;
+            gameSettings.category =
+                document
+                    .getElementById(
+                        'setting-category'
+                    )
+                    .value;
 
-            for (var i = 0; i < names.length; i++) {
-                var badge = document.createElement('span');
-                badge.className = 'player-badge';
-                badge.textContent = names[i];
-                listDiv.appendChild(badge);
-            }
 
-            if (names.length >= 3) {
-                document.getElementById('start-warning').style.display = 'none';
-            }
+            gameSettings.mode =
+                document
+                    .getElementById(
+                        'setting-mode'
+                    )
+                    .value;
+
+
+            broadcastData({
+                type: 'SYNC',
+                players: playersMap,
+                settings: gameSettings
+            });
+
+
             applySettingsUI();
         }
 
+
+        /* ==============================
+           설정 UI
+        ============================== */
+
+        function applySettingsUI() {
+
+            document
+                .getElementById(
+                    'setting-category'
+                )
+                .value =
+                gameSettings.category;
+
+
+            document
+                .getElementById(
+                    'setting-mode'
+                )
+                .value =
+                gameSettings.mode;
+
+
+            document
+                .getElementById(
+                    'liar-count-display'
+                )
+                .innerText =
+                gameSettings.liarCount;
+        }
+
+
+        /* ==============================
+           플레이어 목록
+        ============================== */
+
+        function renderPlayers() {
+
+            var listDiv =
+                document.getElementById(
+                    'player-list'
+                );
+
+
+            listDiv.innerHTML = '';
+
+
+            var names =
+                Object.keys(playersMap);
+
+
+            document
+                .getElementById(
+                    'player-count'
+                )
+                .innerText =
+                names.length;
+
+
+            for (
+                var i = 0;
+                i < names.length;
+                i++
+            ) {
+
+                var badge =
+                    document.createElement(
+                        'span'
+                    );
+
+
+                badge.className =
+                    'player-badge';
+
+
+                badge.textContent =
+                    names[i];
+
+
+                listDiv.appendChild(
+                    badge
+                );
+            }
+
+
+            if (names.length >= 3) {
+
+                document
+                    .getElementById(
+                        'start-warning'
+                    )
+                    .style
+                    .display = 'none';
+
+            } else {
+
+                document
+                    .getElementById(
+                        'start-warning'
+                    )
+                    .style
+                    .display = 'block';
+            }
+
+
+            applySettingsUI();
+        }
+
+
+        /* ==============================
+           전체 방송
+        ============================== */
+
         function broadcastData(data) {
-            for (var i = 0; i < connections.length; i++) {
-                if (connections[i].open) connections[i].send(data);
+
+            for (
+                var i = 0;
+                i < connections.length;
+                i++
+            ) {
+
+                if (
+                    connections[i].open
+                ) {
+
+                    connections[i].send(
+                        data
+                    );
+                }
             }
         }
 
-        function startGame() {
-            var playerNames = Object.keys(playersMap);
-            var warningBox = document.getElementById('start-warning');
 
-            if (playerNames.length < 3) {
-                warningBox.style.display = 'block';
+        /* ==============================
+           게임 시작
+        ============================== */
+
+        function startGame() {
+
+            var playerNames =
+                Object.keys(playersMap);
+
+
+            var warningBox =
+                document.getElementById(
+                    'start-warning'
+                );
+
+
+            if (
+                playerNames.length < 3
+            ) {
+
+                warningBox.style.display =
+                    'block';
+
                 return;
             }
 
-            warningBox.style.display = 'none';
 
-            var words = wordDatabase[gameSettings.category];
-            var selectedKeyword = words[Math.floor(Math.random() * words.length)];
-            
-            var otherWords = words.filter(w => w !== selectedKeyword);
-            var selectedFakeKeyword = otherWords[Math.floor(Math.random() * otherWords.length)];
+            warningBox.style.display =
+                'none';
 
-            playerOrder = [...playerNames].sort(() => 0.5 - Math.random());
-            var liars = [...playerOrder].sort(() => 0.5 - Math.random()).slice(0, gameSettings.liarCount);
 
-            var spies = [];
-            if (gameSettings.mode === "스파이 모드") {
-                var nonLiars = playerOrder.filter(p => !liars.includes(p));
-                spies = [nonLiars[Math.floor(Math.random() * nonLiars.length)]];
+            var words =
+                wordDatabase[
+                    gameSettings.category
+                ];
+
+
+            if (
+                !words ||
+                words.length === 0
+            ) {
+
+                return alert(
+                    "이 주제에는 제시어가 없습니다."
+                );
             }
 
-            var startPayload = { 
-                type: 'START_GAME_INFO', 
-                liars: liars,
-                spies: spies,
-                keyword: selectedKeyword,
-                fakeKeyword: selectedFakeKeyword,
-                mode: gameSettings.mode,
-                order: playerOrder
+
+            /* 진짜 제시어 */
+            var selectedKeyword =
+                words[
+                    Math.floor(
+                        Math.random()
+                        * words.length
+                    )
+                ];
+
+
+            /* 가짜 제시어 */
+            var otherWords =
+                words.filter(
+                    function(w) {
+                        return w !== selectedKeyword;
+                    }
+                );
+
+
+            var selectedFakeKeyword =
+                otherWords[
+                    Math.floor(
+                        Math.random()
+                        * otherWords.length
+                    )
+                ];
+
+
+            /* 플레이어 순서 */
+            playerOrder =
+                [...playerNames]
+                .sort(
+                    function() {
+                        return 0.5 - Math.random();
+                    }
+                );
+
+
+            /* 라이어 추첨 */
+            var shuffledPlayers =
+                [...playerOrder]
+                .sort(
+                    function() {
+                        return 0.5 - Math.random();
+                    }
+                );
+
+
+            var liars =
+                shuffledPlayers.slice(
+                    0,
+                    gameSettings.liarCount
+                );
+
+
+            /* 스파이 */
+            var spies = [];
+
+
+            if (
+                gameSettings.mode ===
+                "스파이 모드"
+            ) {
+
+                var nonLiars =
+                    playerOrder.filter(
+                        function(p) {
+                            return !liars.includes(p);
+                        }
+                    );
+
+
+                if (nonLiars.length > 0) {
+
+                    spies = [
+                        nonLiars[
+                            Math.floor(
+                                Math.random()
+                                * nonLiars.length
+                            )
+                        ]
+                    ];
+                }
+            }
+
+
+            var startPayload = {
+
+                type:
+                    'START_GAME_INFO',
+
+                liars:
+                    liars,
+
+                spies:
+                    spies,
+
+                keyword:
+                    selectedKeyword,
+
+                fakeKeyword:
+                    selectedFakeKeyword,
+
+                mode:
+                    gameSettings.mode,
+
+                order:
+                    playerOrder
             };
 
-            broadcastData(startPayload);
-            handleNetworkData(startPayload);
+
+            broadcastData(
+                startPayload
+            );
+
+
+            handleNetworkData(
+                startPayload
+            );
         }
+
+
+        /* ==============================
+           역할 추첨 화면
+        ============================== */
 
         function handleGameStart(mode) {
-            showScreen('screen-game');
-            var rouletteBox = document.getElementById('roulette-box');
-            var resultBox = document.getElementById('role-result-box');
-            var roleTitle = document.getElementById('my-role-title');
-            
-            rouletteBox.style.display = 'block';
-            resultBox.style.display = 'none';
 
-            var items = ["추첨 중...", "단어 배정 중...", "역할 할당 중..."];
+            showScreen(
+                'screen-game'
+            );
+
+
+            var rouletteBox =
+                document.getElementById(
+                    'roulette-box'
+                );
+
+
+            var resultBox =
+                document.getElementById(
+                    'role-result-box'
+                );
+
+
+            var roleTitle =
+                document.getElementById(
+                    'my-role-title'
+                );
+
+
+            rouletteBox.style.display =
+                'block';
+
+
+            resultBox.style.display =
+                'none';
+
+
+            var items = [
+                "🎲 추첨 중...",
+                "🔤 단어 배정 중...",
+                "🎭 역할 할당 중...",
+                "🔀 랜덤 추첨 중..."
+            ];
+
+
             var count = 0;
-            var interval = setInterval(function() {
-                rouletteBox.innerText = items[Math.floor(Math.random() * items.length)];
-                count++;
 
-                if (count > 25) {
-                    clearInterval(interval);
-                    rouletteBox.style.display = 'none';
-                    resultBox.style.display = 'block';
 
-                    var isLiar = currentLiars.includes(myName);
-                    var isSpy = currentSpies.includes(myName);
+            var interval =
+                setInterval(
+                    function() {
 
-                    if (mode === "바보 모드") {
-                        // [바보 모드] 시민/라이어 타이틀을 표시하지 않음
-                        roleTitle.style.display = "none";
-                        document.getElementById('my-role').innerText = "";
-                        
-                        if (isLiar) {
-                            myDisplayKeyword = fakeKeyword;
-                        } else {
-                            myDisplayKeyword = currentKeyword;
+                        rouletteBox.innerText =
+                            items[
+                                Math.floor(
+                                    Math.random()
+                                    * items.length
+                                )
+                            ];
+
+
+                        count++;
+
+
+                        if (count > 25) {
+
+                            clearInterval(
+                                interval
+                            );
+
+
+                            rouletteBox.style.display =
+                                'none';
+
+
+                            resultBox.style.display =
+                                'block';
+
+
+                            var isLiar =
+                                currentLiars
+                                    .includes(myName);
+
+
+                            var isSpy =
+                                currentSpies
+                                    .includes(myName);
+
+
+                            /* 바보 모드 */
+                            if (
+                                mode ===
+                                "바보 모드"
+                            ) {
+
+                                roleTitle.style.display =
+                                    "none";
+
+
+                                document
+                                    .getElementById(
+                                        'my-role'
+                                    )
+                                    .innerText = "";
+
+
+                                if (isLiar) {
+
+                                    myDisplayKeyword =
+                                        fakeKeyword;
+
+                                } else {
+
+                                    myDisplayKeyword =
+                                        currentKeyword;
+                                }
+
+
+                                document
+                                    .getElementById(
+                                        'my-keyword'
+                                    )
+                                    .innerText =
+                                    "제시어: "
+                                    + myDisplayKeyword;
+                            }
+
+
+                            /* 스파이 */
+                            else if (
+                                mode ===
+                                "스파이 모드"
+                                &&
+                                isSpy
+                            ) {
+
+                                roleTitle.style.display =
+                                    "block";
+
+
+                                document
+                                    .getElementById(
+                                        'my-role'
+                                    )
+                                    .innerText =
+                                    "스파이";
+
+
+                                document
+                                    .getElementById(
+                                        'my-role'
+                                    )
+                                    .style
+                                    .color =
+                                    "#ff9800";
+
+
+                                myDisplayKeyword =
+                                    currentKeyword;
+
+
+                                document
+                                    .getElementById(
+                                        'my-keyword'
+                                    )
+                                    .innerText =
+                                    "제시어: "
+                                    + currentKeyword
+                                    + " (라이어: "
+                                    + currentLiars.join(', ')
+                                    + ")";
+                            }
+
+
+                            /* 일반 모드 */
+                            else {
+
+                                roleTitle.style.display =
+                                    "block";
+
+
+                                if (isLiar) {
+
+                                    document
+                                        .getElementById(
+                                            'my-role'
+                                        )
+                                        .innerText =
+                                        "라이어";
+
+
+                                    document
+                                        .getElementById(
+                                            'my-role'
+                                        )
+                                        .style
+                                        .color =
+                                        "#dc3545";
+
+
+                                    myDisplayKeyword =
+                                        "??? (당신은 라이어입니다)";
+
+
+                                    document
+                                        .getElementById(
+                                            'my-keyword'
+                                        )
+                                        .innerText =
+                                        "제시어: ???";
+
+                                } else {
+
+                                    document
+                                        .getElementById(
+                                            'my-role'
+                                        )
+                                        .innerText =
+                                        "시민";
+
+
+                                    document
+                                        .getElementById(
+                                            'my-role'
+                                        )
+                                        .style
+                                        .color =
+                                        "#28a745";
+
+
+                                    myDisplayKeyword =
+                                        currentKeyword;
+
+
+                                    document
+                                        .getElementById(
+                                            'my-keyword'
+                                        )
+                                        .innerText =
+                                        "제시어: "
+                                        + currentKeyword;
+                                }
+                            }
+
+
+                            setTimeout(
+                                initDrawingPhase,
+                                3000
+                            );
                         }
-                        document.getElementById('my-keyword').innerText = "제시어: " + myDisplayKeyword;
-                    } else if (mode === "스파이 모드" && isSpy) {
-                        roleTitle.style.display = "block";
-                        document.getElementById('my-role').innerText = "스파이";
-                        document.getElementById('my-role').style.color = "#ff9800";
-                        myDisplayKeyword = currentKeyword;
-                        document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword + " (라이어: " + currentLiars.join(', ') + ")";
-                    } else {
-                        // [일반 모드]
-                        roleTitle.style.display = "block";
-                        if (isLiar) {
-                            document.getElementById('my-role').innerText = "라이어";
-                            document.getElementById('my-role').style.color = "#dc3545";
-                            myDisplayKeyword = "??? (당신은 라이어입니다)";
-                            document.getElementById('my-keyword').innerText = "제시어: ???";
-                        } else {
-                            document.getElementById('my-role').innerText = "시민";
-                            document.getElementById('my-role').style.color = "#28a745";
-                            myDisplayKeyword = currentKeyword;
-                            document.getElementById('my-keyword').innerText = "제시어: " + currentKeyword;
-                        }
-                    }
 
-                    setTimeout(initDrawingPhase, 3000);
-                }
-            }, 100);
+                    },
+                    100
+                );
         }
+
+
+        /* ==============================
+           그림 단계 초기화
+        ============================== */
 
         function initDrawingPhase() {
-            showScreen('screen-drawing');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            showScreen(
+                'screen-drawing'
+            );
+
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
             turnsHistory = [];
+
             currentTurnIndex = 0;
+
             votesMap = {};
 
-            // 게임 진행 화면 상단에 나의 제시어 표출
-            document.getElementById('ingame-keyword-display').innerText = "📌 내 제시어: " + myDisplayKeyword;
 
-            var myTurnNumber = playerOrder.indexOf(myName) + 1;
-            var announceBox = document.getElementById('turn-announcement');
-            announceBox.innerText = "당신은 " + myTurnNumber + "번째 순서입니다!";
+            document
+                .getElementById(
+                    'ingame-keyword-display'
+                )
+                .innerText =
+                "📌 내 제시어: "
+                + myDisplayKeyword;
 
-            setTimeout(function() {
-                announceBox.innerText = "";
-                updateTurnState();
-                startTimer();
-            }, 2500);
+
+            var myTurnNumber =
+                playerOrder.indexOf(myName)
+                + 1;
+
+
+            var announceBox =
+                document.getElementById(
+                    'turn-announcement'
+                );
+
+
+            announceBox.innerText =
+                "당신은 "
+                + myTurnNumber
+                + "번째 순서입니다!";
+
+
+            setTimeout(
+                function() {
+
+                    announceBox.innerText =
+                        "";
+
+                    updateTurnState();
+
+                    startTimer();
+
+                },
+                2500
+            );
         }
 
+
+        /* ==============================
+           타이머
+        ============================== */
+
         function startTimer() {
-            if (gameTimer) clearInterval(gameTimer);
+
+            if (gameTimer) {
+
+                clearInterval(
+                    gameTimer
+                );
+            }
+
+
             timeLeft = 240;
-            document.getElementById('timer-display').innerText = "⏱️ 남은 시간: " + timeLeft + "초";
+
+
+            document
+                .getElementById(
+                    'timer-display'
+                )
+                .innerText =
+                "⏱️ 남은 시간: "
+                + timeLeft
+                + "초";
+
 
             if (isHost) {
-                gameTimer = setInterval(function() {
-                    timeLeft--;
-                    broadcastData({ type: 'TIMER_TICK', time: timeLeft });
-                    
-                    if (timeLeft <= 0) {
-                        clearInterval(gameTimer);
-                        sendData({ type: 'REQ_START_VOTE' });
-                    }
-                }, 1000);
+
+                gameTimer =
+                    setInterval(
+                        function() {
+
+                            timeLeft--;
+
+
+                            broadcastData({
+                                type: 'TIMER_TICK',
+                                time: timeLeft
+                            });
+
+
+                            if (
+                                timeLeft <= 0
+                            ) {
+
+                                clearInterval(
+                                    gameTimer
+                                );
+
+
+                                sendData({
+                                    type:
+                                        'REQ_START_VOTE'
+                                });
+                            }
+
+                        },
+                        1000
+                    );
             }
         }
 
+
+        /* ==============================
+           턴 상태
+        ============================== */
+
         function updateTurnState() {
-            var activePlayer = playerOrder[currentTurnIndex];
-            document.getElementById('turn-indicator').innerText = "현재 순서: " + activePlayer + "님";
-            
-            var isMyTurn = (activePlayer === myName);
-            document.getElementById('my-turn-controls').style.display = isMyTurn ? "flex" : "none";
-            
+
+            var activePlayer =
+                playerOrder[
+                    currentTurnIndex
+                ];
+
+
+            document
+                .getElementById(
+                    'turn-indicator'
+                )
+                .innerText =
+                "현재 순서: "
+                + activePlayer
+                + "님";
+
+
+            var isMyTurn =
+                activePlayer === myName;
+
+
+            document
+                .getElementById(
+                    'my-turn-controls'
+                )
+                .style
+                .display =
+                isMyTurn
+                    ? "flex"
+                    : "none";
+
+
             hasDrawnThisTurn = false;
+
             isDrawing = false;
+
             currentStroke = [];
         }
 
+
+        /* ==============================
+           Canvas 이벤트
+        ============================== */
+
         function setupCanvasEvents() {
+
             function getPos(e) {
-                var rect = canvas.getBoundingClientRect();
-                var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                var clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return { x: clientX - rect.left, y: clientY - rect.top };
+
+                var rect =
+                    canvas.getBoundingClientRect();
+
+
+                var clientX =
+                    e.touches
+                        ? e.touches[0].clientX
+                        : e.clientX;
+
+
+                var clientY =
+                    e.touches
+                        ? e.touches[0].clientY
+                        : e.clientY;
+
+
+                var scaleX =
+                    canvas.width /
+                    rect.width;
+
+
+                var scaleY =
+                    canvas.height /
+                    rect.height;
+
+
+                return {
+
+                    x:
+                        (clientX - rect.left)
+                        * scaleX,
+
+                    y:
+                        (clientY - rect.top)
+                        * scaleY
+                };
             }
+
 
             function startDraw(e) {
-                if (playerOrder[currentTurnIndex] !== myName || hasDrawnThisTurn) return;
+
+                if (
+                    playerOrder[
+                        currentTurnIndex
+                    ] !== myName
+                    ||
+                    hasDrawnThisTurn
+                ) {
+
+                    return;
+                }
+
+
                 isDrawing = true;
-                var pos = getPos(e);
+
+
+                var pos =
+                    getPos(e);
+
+
                 currentStroke = [];
-                
+
+
                 var point = {
-                    x: pos.x, y: pos.y,
-                    color: document.getElementById('brush-color').value,
-                    size: document.getElementById('brush-size').value,
-                    type: 'start'
+
+                    x: pos.x,
+
+                    y: pos.y,
+
+                    color:
+                        document
+                            .getElementById(
+                                'brush-color'
+                            )
+                            .value,
+
+                    size:
+                        document
+                            .getElementById(
+                                'brush-size'
+                            )
+                            .value,
+
+                    type:
+                        'start'
                 };
-                currentStroke.push(point);
+
+
+                currentStroke.push(
+                    point
+                );
+
+
                 drawSegment(point);
-                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
+
+
+                sendData({
+
+                    type:
+                        'DRAW_LIVE',
+
+                    strokeData:
+                        point,
+
+                    sender:
+                        myName
+                });
             }
+
 
             function moveDraw(e) {
+
                 if (!isDrawing) return;
-                var pos = getPos(e);
+
+
+                var pos =
+                    getPos(e);
+
+
                 var point = {
-                    x: pos.x, y: pos.y,
-                    color: document.getElementById('brush-color').value,
-                    size: document.getElementById('brush-size').value,
-                    type: 'move'
+
+                    x:
+                        pos.x,
+
+                    y:
+                        pos.y,
+
+                    color:
+                        document
+                            .getElementById(
+                                'brush-color'
+                            )
+                            .value,
+
+                    size:
+                        document
+                            .getElementById(
+                                'brush-size'
+                            )
+                            .value,
+
+                    type:
+                        'move'
                 };
-                currentStroke.push(point);
-                drawSegment(point);
-                sendData({ type: 'DRAW_LIVE', strokeData: point, sender: myName });
+
+
+                currentStroke.push(
+                    point
+                );
+
+
+                drawSegment(
+                    point
+                );
+
+
+                sendData({
+
+                    type:
+                        'DRAW_LIVE',
+
+                    strokeData:
+                        point,
+
+                    sender:
+                        myName
+                });
             }
 
+
             function stopDraw() {
+
                 if (isDrawing) {
+
                     isDrawing = false;
+
                     hasDrawnThisTurn = true;
                 }
             }
 
-            canvas.addEventListener('mousedown', startDraw);
-            canvas.addEventListener('mousemove', moveDraw);
-            canvas.addEventListener('mouseup', stopDraw);
 
-            canvas.addEventListener('touchstart', function(e) { startDraw(e); e.preventDefault(); });
-            canvas.addEventListener('touchmove', function(e) { moveDraw(e); e.preventDefault(); });
-            canvas.addEventListener('touchend', stopDraw);
+            canvas.addEventListener(
+                'mousedown',
+                startDraw
+            );
+
+
+            canvas.addEventListener(
+                'mousemove',
+                moveDraw
+            );
+
+
+            canvas.addEventListener(
+                'mouseup',
+                stopDraw
+            );
+
+
+            canvas.addEventListener(
+                'mouseleave',
+                stopDraw
+            );
+
+
+            canvas.addEventListener(
+                'touchstart',
+                function(e) {
+
+                    startDraw(e);
+
+                    e.preventDefault();
+                },
+                { passive: false }
+            );
+
+
+            canvas.addEventListener(
+                'touchmove',
+                function(e) {
+
+                    moveDraw(e);
+
+                    e.preventDefault();
+                },
+                { passive: false }
+            );
+
+
+            canvas.addEventListener(
+                'touchend',
+                function(e) {
+
+                    stopDraw(e);
+
+                    e.preventDefault();
+                },
+                { passive: false }
+            );
         }
 
-        function drawSegment(pt) {
-            ctx.strokeStyle = pt.color;
-            ctx.lineWidth = pt.size;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
 
-            if (pt.type === 'start') {
+        /* ==============================
+           선 그리기
+        ============================== */
+
+        function drawSegment(pt) {
+
+            ctx.strokeStyle =
+                pt.color;
+
+
+            ctx.lineWidth =
+                Number(pt.size);
+
+
+            ctx.lineCap =
+                'round';
+
+
+            ctx.lineJoin =
+                'round';
+
+
+            if (
+                pt.type ===
+                'start'
+            ) {
+
                 ctx.beginPath();
-                ctx.moveTo(pt.x, pt.y);
-            } else if (pt.type === 'move') {
-                ctx.lineTo(pt.x, pt.y);
+
+                ctx.moveTo(
+                    pt.x,
+                    pt.y
+                );
+
+            } else if (
+                pt.type ===
+                'move'
+            ) {
+
+                ctx.lineTo(
+                    pt.x,
+                    pt.y
+                );
+
                 ctx.stroke();
             }
         }
 
+
+        /* ==============================
+           Canvas 다시 그리기
+        ============================== */
+
         function redrawCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (var i = 0; i < turnsHistory.length; i++) {
-                var stroke = turnsHistory[i].path;
-                for (var j = 0; j < stroke.length; j++) {
-                    drawSegment(stroke[j]);
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
+            for (
+                var i = 0;
+                i < turnsHistory.length;
+                i++
+            ) {
+
+                var stroke =
+                    turnsHistory[i].path;
+
+
+                for (
+                    var j = 0;
+                    j < stroke.length;
+                    j++
+                ) {
+
+                    drawSegment(
+                        stroke[j]
+                    );
                 }
             }
         }
+
+
+        /* ==============================
+           현재 턴 다시 그리기
+        ============================== */
 
         function resetMyStroke() {
-            if (playerOrder[currentTurnIndex] !== myName) return;
-            hasDrawnThisTurn = false;
+
+            if (
+                playerOrder[
+                    currentTurnIndex
+                ] !== myName
+            ) {
+
+                return;
+            }
+
+
+            hasDrawnThisTurn =
+                false;
+
+
             currentStroke = [];
-            sendData({ type: 'REQ_RESET_STROKE' });
+
+
+            sendData({
+
+                type:
+                    'REQ_RESET_STROKE'
+            });
         }
+
+
+        /* ==============================
+           턴 종료
+        ============================== */
 
         function finishMyTurn() {
-            if (playerOrder[currentTurnIndex] !== myName) return;
-            sendData({ type: 'REQ_NEXT_TURN', player: myName, stroke: currentStroke });
+
+            if (
+                playerOrder[
+                    currentTurnIndex
+                ] !== myName
+            ) {
+
+                return;
+            }
+
+
+            if (
+                currentStroke.length === 0
+            ) {
+
+                return alert(
+                    "그림을 먼저 그려주세요!"
+                );
+            }
+
+
+            sendData({
+
+                type:
+                    'REQ_NEXT_TURN',
+
+                player:
+                    myName,
+
+                stroke:
+                    currentStroke
+            });
         }
+
+
+        /* ==============================
+           조기 투표
+        ============================== */
 
         function requestEarlyVote() {
-            if (confirm("지금 바로 투표를 시작하시겠습니까?")) {
-                sendData({ type: 'REQ_START_VOTE' });
+
+            if (
+                confirm(
+                    "지금 바로 투표를 시작하시겠습니까?"
+                )
+            ) {
+
+                sendData({
+                    type:
+                        'REQ_START_VOTE'
+                });
             }
         }
+
+
+        /* ==============================
+           투표 화면
+        ============================== */
 
         function openVoteScreen() {
-            showScreen('screen-vote');
-            var container = document.getElementById('vote-player-list');
-            container.innerHTML = "";
 
-            var playerNames = Object.keys(playersMap);
-            for (var i = 0; i < playerNames.length; i++) {
-                var pName = playerNames[i];
-                var btn = document.createElement('button');
-                btn.className = "vote-btn";
-                btn.innerText = pName;
-                btn.onclick = (function(target) {
-                    return function() { submitMyVote(target, this); };
-                })(pName);
-                container.appendChild(btn);
+            showScreen(
+                'screen-vote'
+            );
+
+
+            var container =
+                document.getElementById(
+                    'vote-player-list'
+                );
+
+
+            container.innerHTML =
+                "";
+
+
+            var playerNames =
+                Object.keys(
+                    playersMap
+                );
+
+
+            for (
+                var i = 0;
+                i < playerNames.length;
+                i++
+            ) {
+
+                var pName =
+                    playerNames[i];
+
+
+                var btn =
+                    document.createElement(
+                        'button'
+                    );
+
+
+                btn.className =
+                    "vote-btn";
+
+
+                btn.innerText =
+                    pName;
+
+
+                btn.onclick =
+                    (function(target) {
+
+                        return function() {
+
+                            submitMyVote(
+                                target,
+                                this
+                            );
+                        };
+
+                    })(pName);
+
+
+                container.appendChild(
+                    btn
+                );
             }
-            document.getElementById('vote-status').innerText = "라이어로 의심되는 사람을 클릭하세요!";
+
+
+            document
+                .getElementById(
+                    'vote-status'
+                )
+                .innerText =
+                "라이어로 의심되는 사람을 클릭하세요!";
         }
 
-        function submitMyVote(targetName, btnElem) {
-            var allBtns = document.querySelectorAll('.vote-btn');
-            allBtns.forEach(b => b.disabled = true);
-            btnElem.classList.add('selected');
-            document.getElementById('vote-status').innerText = targetName + "님에게 투표했습니다. 다른 사람들을 기다리는 중...";
 
-            sendData({ type: 'SUBMIT_VOTE', voter: myName, target: targetName });
+        /* ==============================
+           투표 제출
+        ============================== */
+
+        function submitMyVote(
+            targetName,
+            btnElem
+        ) {
+
+            var allBtns =
+                document.querySelectorAll(
+                    '.vote-btn'
+                );
+
+
+            allBtns.forEach(
+                function(b) {
+                    b.disabled = true;
+                }
+            );
+
+
+            btnElem.classList.add(
+                'selected'
+            );
+
+
+            document
+                .getElementById(
+                    'vote-status'
+                )
+                .innerText =
+                targetName
+                + "님에게 투표했습니다. 다른 사람들을 기다리는 중...";
+
+
+            sendData({
+
+                type:
+                    'SUBMIT_VOTE',
+
+                voter:
+                    myName,
+
+                target:
+                    targetName
+            });
         }
+
+
+        /* ==============================
+           결과 계산
+        ============================== */
 
         function calculateAndBroadcastResult() {
+
             var mostVotedPlayer = "";
+
             var maxVotes = -1;
 
-            for (var player in votesMap) {
-                if (votesMap[player] > maxVotes) {
-                    maxVotes = votesMap[player];
-                    mostVotedPlayer = player;
+
+            for (
+                var player in votesMap
+            ) {
+
+                if (
+                    votesMap[player]
+                    > maxVotes
+                ) {
+
+                    maxVotes =
+                        votesMap[player];
+
+                    mostVotedPlayer =
+                        player;
                 }
             }
 
-            var isCitizenWin = currentLiars.includes(mostVotedPlayer);
+
+            var isCitizenWin =
+                currentLiars.includes(
+                    mostVotedPlayer
+                );
+
 
             var resultPayload = {
-                type: 'GAME_RESULT',
-                mostVoted: mostVotedPlayer,
-                isCitizenWin: isCitizenWin
+
+                type:
+                    'GAME_RESULT',
+
+                mostVoted:
+                    mostVotedPlayer,
+
+                isCitizenWin:
+                    isCitizenWin
             };
 
-            broadcastData(resultPayload);
-            handleNetworkData(resultPayload);
+
+            broadcastData(
+                resultPayload
+            );
+
+
+            handleNetworkData(
+                resultPayload
+            );
         }
 
-        function renderGameResult(mostVoted, isCitizenWin) {
-            showScreen('screen-result');
-            var resultBox = document.getElementById('result-box-ui');
+
+        /* ==============================
+           결과 화면
+        ============================== */
+
+        function renderGameResult(
+            mostVoted,
+            isCitizenWin
+        ) {
+
+            showScreen(
+                'screen-result'
+            );
+
+
+            var resultBox =
+                document.getElementById(
+                    'result-box-ui'
+                );
+
 
             if (isCitizenWin) {
-                resultBox.className = "result-box win";
-                resultBox.innerText = "🎉 시민 승리! (" + mostVoted + "님은 라이어가 맞습니다!)";
+
+                resultBox.className =
+                    "result-box win";
+
+
+                resultBox.innerText =
+                    "🎉 시민 승리! ("
+                    + mostVoted
+                    + "님은 라이어가 맞습니다!)";
+
             } else {
-                resultBox.className = "result-box lose";
-                resultBox.innerText = "💀 라이어 승리! (" + mostVoted + "님은 라이어가 아닙니다!)";
+
+                resultBox.className =
+                    "result-box lose";
+
+
+                resultBox.innerText =
+                    "💀 라이어 승리! ("
+                    + mostVoted
+                    + "님은 라이어가 아닙니다!)";
             }
 
-            document.getElementById('actual-liars').innerText = currentLiars.join(', ');
-            document.getElementById('actual-keyword').innerText = currentKeyword;
 
-            var fakeInfo = document.getElementById('fake-keyword-info');
-            if (gameSettings.mode === "바보 모드") {
-                fakeInfo.style.display = "block";
-                document.getElementById('actual-fake-keyword').innerText = fakeKeyword;
+            document
+                .getElementById(
+                    'actual-liars'
+                )
+                .innerText =
+                currentLiars.join(', ');
+
+
+            document
+                .getElementById(
+                    'actual-keyword'
+                )
+                .innerText =
+                currentKeyword;
+
+
+            var fakeInfo =
+                document.getElementById(
+                    'fake-keyword-info'
+                );
+
+
+            if (
+                gameSettings.mode ===
+                "바보 모드"
+            ) {
+
+                fakeInfo.style.display =
+                    "block";
+
+
+                document
+                    .getElementById(
+                        'actual-fake-keyword'
+                    )
+                    .innerText =
+                    fakeKeyword;
+
             } else {
-                fakeInfo.style.display = "none";
+
+                fakeInfo.style.display =
+                    "none";
             }
+
 
             if (isHost) {
-                document.getElementById('btn-restart').style.display = 'block';
-                document.getElementById('restart-wait-text').style.display = 'none';
+
+                document
+                    .getElementById(
+                        'btn-restart'
+                    )
+                    .style
+                    .display =
+                    'block';
+
+
+                document
+                    .getElementById(
+                        'restart-wait-text'
+                    )
+                    .style
+                    .display =
+                    'none';
+
             } else {
-                document.getElementById('btn-restart').style.display = 'none';
-                document.getElementById('restart-wait-text').style.display = 'block';
+
+                document
+                    .getElementById(
+                        'btn-restart'
+                    )
+                    .style
+                    .display =
+                    'none';
+
+
+                document
+                    .getElementById(
+                        'restart-wait-text'
+                    )
+                    .style
+                    .display =
+                    'block';
             }
         }
 
+
+        /* ==============================
+           다시하기
+        ============================== */
+
         function restartGame() {
+
             if (!isHost) return;
-            var restartPayload = { type: 'GO_TO_LOBBY' };
-            broadcastData(restartPayload);
-            handleNetworkData(restartPayload);
+
+
+            currentTurnIndex = 0;
+
+            hasDrawnThisTurn = false;
+
+            currentStroke = [];
+
+            turnsHistory = [];
+
+            votesMap = {};
+
+            timeLeft = 240;
+
+            currentLiars = [];
+
+            currentSpies = [];
+
+            currentKeyword = "";
+
+            fakeKeyword = "";
+
+            myDisplayKeyword = "";
+
+
+            var restartPayload = {
+
+                type:
+                    'GO_TO_LOBBY'
+            };
+
+
+            broadcastData(
+                restartPayload
+            );
+
+
+            handleNetworkData(
+                restartPayload
+            );
+
+
+            document
+                .getElementById(
+                    'btn-start'
+                )
+                .style
+                .display =
+                'block';
         }
 
+
+        /* ==============================
+           초대 링크 복사
+        ============================== */
+
         function copyLink() {
-            var linkText = document.getElementById('lobby-link').innerText;
-            navigator.clipboard.writeText(linkText).then(function() {
-                alert("초대 링크가 복사되었습니다!");
-            });
+
+            var linkText =
+                document
+                    .getElementById(
+                        'lobby-link'
+                    )
+                    .innerText;
+
+
+            navigator.clipboard
+                .writeText(linkText)
+                .then(
+                    function() {
+
+                        alert(
+                            "초대 링크가 복사되었습니다!"
+                        );
+                    }
+                )
+                .catch(
+                    function() {
+
+                        alert(
+                            "링크 복사에 실패했습니다. 직접 복사해주세요."
+                        );
+                    }
+                );
         }
+
     </script>
+
 </body>
 </html>
+```
