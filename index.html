@@ -338,37 +338,132 @@
             padding: 0;
             border: 2px solid #cbd5e0;
             border-radius: 10px;
-            cursor: default;
+            cursor: pointer;
             box-sizing: border-box;
             box-shadow: inset 0 0 0 2px white;
         }
 
-        .color-palette {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            max-width: 260px;
-            padding: 6px;
+        /* 큰 색상 선택창 - 그림판 위가 아니라 컨트롤 영역 위쪽에 표시 */
+        .custom-color-picker {
+            position: absolute;
+            left: 0;
+            bottom: calc(100% + 10px);
+            width: 250px;
+            padding: 12px;
             background: #fff;
-            border: 1px solid #cbd5e0;
-            border-radius: 10px;
+            border: 1px solid #b7b7b7;
+            box-shadow: 0 5px 18px rgba(0,0,0,.22);
+            z-index: 1000;
+            display: none;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            user-select: none;
         }
 
-        .color-choice {
-            width: 25px;
-            height: 25px;
-            min-width: 25px;
-            padding: 0;
-            margin: 0;
-            border: 2px solid #fff;
+        .custom-color-picker.open { display: block; }
+
+        .color-sv {
+            position: relative;
+            width: 100%;
+            height: 138px;
+            cursor: crosshair;
+            background: linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, #f00);
+            touch-action: none;
+        }
+
+        .color-sv-pointer {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 1px #333;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .color-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-current {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid #bbb;
+            box-shadow: inset 0 0 0 1px #fff;
+            flex: 0 0 auto;
+        }
+
+        .color-eyedropper {
+            font-size: 20px;
+            line-height: 1;
+            cursor: default;
+        }
+
+        .color-hue {
+            position: relative;
+            flex: 1;
+            height: 12px;
             border-radius: 6px;
-            box-shadow: 0 0 0 1px #cbd5e0;
-            cursor: pointer;
+            background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            cursor: ew-resize;
+            touch-action: none;
         }
 
-        .color-choice.selected {
-            box-shadow: 0 0 0 2px #2d3748;
-            transform: scale(1.08);
+        .color-hue-pointer {
+            position: absolute;
+            top: 50%;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-radius: 50%;
+            background: #f00;
+            box-shadow: 0 0 0 1px #333;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .color-rgb {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            margin-top: 10px;
+        }
+
+        .color-rgb label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            font-size: 12px;
+            color: #222;
+        }
+
+        .color-rgb input {
+            width: 100%;
+            height: 32px;
+            padding: 3px 5px;
+            border: 1px solid #c7c7c7;
+            box-sizing: border-box;
+            text-align: center;
+            font-size: 13px;
+            color: #111;
+            background: #fff;
+        }
+
+        .color-picker-close {
+            width: 100%;
+            margin-top: 9px;
+            padding: 6px;
+            border: 1px solid #c7c7c7;
+            background: #f7f7f7;
+            color: #333;
+            cursor: pointer;
+            font-size: 12px;
         }
 
         .canvas-controls input[type="range"] {
@@ -665,20 +760,24 @@
                 <label style="display:inline; width:auto; margin:0;">색상:</label>
                 <div class="color-picker-wrap">
                     <input type="hidden" id="brush-color" value="#000000">
-                    <div id="color-preview" class="color-preview" style="background:#000000;" title="현재 선택 색상"></div>
-                    <div class="color-palette" id="color-palette" aria-label="색상 선택">
-                        <button type="button" class="color-choice selected" style="background:#000000;" data-color="#000000" title="검정"></button>
-                        <button type="button" class="color-choice" style="background:#ffffff;" data-color="#ffffff" title="흰색"></button>
-                        <button type="button" class="color-choice" style="background:#ff0000;" data-color="#ff0000" title="빨강"></button>
-                        <button type="button" class="color-choice" style="background:#ff7a00;" data-color="#ff7a00" title="주황"></button>
-                        <button type="button" class="color-choice" style="background:#ffd400;" data-color="#ffd400" title="노랑"></button>
-                        <button type="button" class="color-choice" style="background:#22c55e;" data-color="#22c55e" title="초록"></button>
-                        <button type="button" class="color-choice" style="background:#00c2ff;" data-color="#00c2ff" title="하늘색"></button>
-                        <button type="button" class="color-choice" style="background:#2563eb;" data-color="#2563eb" title="파랑"></button>
-                        <button type="button" class="color-choice" style="background:#7c3aed;" data-color="#7c3aed" title="보라"></button>
-                        <button type="button" class="color-choice" style="background:#ec4899;" data-color="#ec4899" title="분홍"></button>
-                        <button type="button" class="color-choice" style="background:#92400e;" data-color="#92400e" title="갈색"></button>
-                        <button type="button" class="color-choice" style="background:#6b7280;" data-color="#6b7280" title="회색"></button>
+                    <div id="color-preview" class="color-preview" style="background:#000000;" title="색상 선택"></div>
+                    <div id="custom-color-picker" class="custom-color-picker" aria-label="색상 선택">
+                        <div id="color-sv" class="color-sv">
+                            <div id="color-sv-pointer" class="color-sv-pointer" style="left:0%; top:100%;"></div>
+                        </div>
+                        <div class="color-picker-row">
+                            <div id="color-current" class="color-current" style="background:#000000;"></div>
+                            <div class="color-eyedropper">🖌️</div>
+                            <div id="color-hue" class="color-hue">
+                                <div id="color-hue-pointer" class="color-hue-pointer" style="left:0%;"></div>
+                            </div>
+                        </div>
+                        <div class="color-rgb">
+                            <label>R<input id="color-r" type="number" min="0" max="255" value="0"></label>
+                            <label>G<input id="color-g" type="number" min="0" max="255" value="0"></label>
+                            <label>B<input id="color-b" type="number" min="0" max="255" value="0"></label>
+                        </div>
+                        <button type="button" class="color-picker-close" id="color-picker-close">닫기</button>
                     </div>
                 </div>
                 <label style="display:inline; width:auto; margin:0;">굵기:</label>
@@ -881,6 +980,128 @@
         /* =====================================================
            브러시 UI
         ===================================================== */
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(function(v) {
+                return Number(v).toString(16).padStart(2, "0");
+            }).join("");
+        }
+
+        function hexToRgb(hex) {
+            hex = hex.replace("#", "");
+            if (hex.length === 3) hex = hex.split("").map(function(c) { return c + c; }).join("");
+            return {
+                r: parseInt(hex.substring(0, 2), 16) || 0,
+                g: parseInt(hex.substring(2, 4), 16) || 0,
+                b: parseInt(hex.substring(4, 6), 16) || 0
+            };
+        }
+
+        function hsvToRgb(h, s, v) {
+            var i = Math.floor(h * 6);
+            var f = h * 6 - i;
+            var p = v * (1 - s);
+            var q = v * (1 - f * s);
+            var t = v * (1 - (1 - f) * s);
+            var r, g, b;
+            switch (i % 6) {
+                case 0: r=v; g=t; b=p; break;
+                case 1: r=q; g=v; b=p; break;
+                case 2: r=p; g=v; b=t; break;
+                case 3: r=p; g=q; b=v; break;
+                case 4: r=t; g=p; b=v; break;
+                default: r=v; g=p; b=q;
+            }
+            return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+        }
+
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            var max = Math.max(r,g,b), min = Math.min(r,g,b), d = max-min;
+            var h = 0, s = max === 0 ? 0 : d/max, v = max;
+            if (d !== 0) {
+                switch(max) {
+                    case r: h = ((g-b)/d + (g < b ? 6 : 0))/6; break;
+                    case g: h = ((b-r)/d + 2)/6; break;
+                    case b: h = ((r-g)/d + 4)/6; break;
+                }
+            }
+            return {h:h,s:s,v:v};
+        }
+
+        function setupCustomColorPicker() {
+            var picker = document.getElementById("custom-color-picker");
+            var preview = document.getElementById("color-preview");
+            var colorInput = document.getElementById("brush-color");
+            var current = document.getElementById("color-current");
+            var sv = document.getElementById("color-sv");
+            var svPointer = document.getElementById("color-sv-pointer");
+            var hue = document.getElementById("color-hue");
+            var huePointer = document.getElementById("color-hue-pointer");
+            var rInput = document.getElementById("color-r");
+            var gInput = document.getElementById("color-g");
+            var bInput = document.getElementById("color-b");
+            var close = document.getElementById("color-picker-close");
+            var hsv = {h: 0, s: 0, v: 0};
+
+            function updateColor(hex, updateHsv) {
+                var rgb = hexToRgb(hex);
+                colorInput.value = rgbToHex(rgb.r, rgb.g, rgb.b);
+                preview.style.background = colorInput.value;
+                current.style.background = colorInput.value;
+                rInput.value = rgb.r; gInput.value = rgb.g; bInput.value = rgb.b;
+                if (updateHsv !== false) hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+                sv.style.background = "linear-gradient(to bottom, transparent, #000), linear-gradient(to right, #fff, hsl(" + (hsv.h * 360) + ",100%,50%))";
+                svPointer.style.left = (hsv.s * 100) + "%";
+                svPointer.style.top = ((1 - hsv.v) * 100) + "%";
+                huePointer.style.left = (hsv.h * 100) + "%";
+            }
+
+            function pickSV(e) {
+                var rect = sv.getBoundingClientRect();
+                hsv.s = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                hsv.v = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height));
+                var rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+                updateColor(rgbToHex(rgb.r,rgb.g,rgb.b), false);
+            }
+
+            function pickHue(e) {
+                var rect = hue.getBoundingClientRect();
+                hsv.h = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                var rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+                updateColor(rgbToHex(rgb.r,rgb.g,rgb.b), false);
+            }
+
+            var svDown = false, hueDown = false;
+            sv.addEventListener("pointerdown", function(e){ svDown=true; sv.setPointerCapture(e.pointerId); pickSV(e); });
+            sv.addEventListener("pointermove", function(e){ if(svDown) pickSV(e); });
+            sv.addEventListener("pointerup", function(){ svDown=false; });
+            sv.addEventListener("pointercancel", function(){ svDown=false; });
+            hue.addEventListener("pointerdown", function(e){ hueDown=true; hue.setPointerCapture(e.pointerId); pickHue(e); });
+            hue.addEventListener("pointermove", function(e){ if(hueDown) pickHue(e); });
+            hue.addEventListener("pointerup", function(){ hueDown=false; });
+            hue.addEventListener("pointercancel", function(){ hueDown=false; });
+
+            [rInput,gInput,bInput].forEach(function(input){
+                input.addEventListener("input", function(){
+                    var r = Math.max(0, Math.min(255, Number(rInput.value)||0));
+                    var g = Math.max(0, Math.min(255, Number(gInput.value)||0));
+                    var b = Math.max(0, Math.min(255, Number(bInput.value)||0));
+                    updateColor(rgbToHex(r,g,b), true);
+                });
+            });
+
+            preview.addEventListener("click", function(e){
+                e.stopPropagation();
+                picker.classList.toggle("open");
+            });
+            close.addEventListener("click", function(){ picker.classList.remove("open"); });
+            document.addEventListener("pointerdown", function(e){
+                if (!picker.contains(e.target) && e.target !== preview) picker.classList.remove("open");
+            });
+
+            updateColor("#000000", true);
+        }
+
         function setupBrushUI() {
             var brushSize = document.getElementById("brush-size");
             var brushText = document.getElementById("brush-size-text");
@@ -894,23 +1115,7 @@
                 opacityText.innerText = opacity.value + "%";
             });
 
-            // 브라우저 기본 색상 팝업 대신 그림판 밖에 항상 보이는 팔레트 사용
-            var colorInput = document.getElementById("brush-color");
-            var colorPreview = document.getElementById("color-preview");
-            var colorChoices = document.querySelectorAll(".color-choice");
-
-            colorChoices.forEach(function(button) {
-                button.addEventListener("click", function() {
-                    var color = button.getAttribute("data-color");
-                    colorInput.value = color;
-                    colorPreview.style.background = color;
-
-                    colorChoices.forEach(function(other) {
-                        other.classList.remove("selected");
-                    });
-                    button.classList.add("selected");
-                });
-            });
+            setupCustomColorPicker();
         }
 
         /* =====================================================
