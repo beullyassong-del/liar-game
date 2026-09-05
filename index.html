@@ -325,13 +325,50 @@
             flex-wrap: wrap;
         }
 
-        .canvas-controls input[type="color"] {
+        .color-picker-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-preview {
             width: 44px;
             height: 44px;
             padding: 0;
             border: 2px solid #cbd5e0;
             border-radius: 10px;
+            cursor: default;
+            box-sizing: border-box;
+            box-shadow: inset 0 0 0 2px white;
+        }
+
+        .color-palette {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            max-width: 260px;
+            padding: 6px;
+            background: #fff;
+            border: 1px solid #cbd5e0;
+            border-radius: 10px;
+        }
+
+        .color-choice {
+            width: 25px;
+            height: 25px;
+            min-width: 25px;
+            padding: 0;
+            margin: 0;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            box-shadow: 0 0 0 1px #cbd5e0;
             cursor: pointer;
+        }
+
+        .color-choice.selected {
+            box-shadow: 0 0 0 2px #2d3748;
+            transform: scale(1.08);
         }
 
         .canvas-controls input[type="range"] {
@@ -626,7 +663,24 @@
 
             <div class="canvas-controls">
                 <label style="display:inline; width:auto; margin:0;">색상:</label>
-                <input type="color" id="brush-color" value="#000000" title="붓 색상 선택">
+                <div class="color-picker-wrap">
+                    <input type="hidden" id="brush-color" value="#000000">
+                    <div id="color-preview" class="color-preview" style="background:#000000;" title="현재 선택 색상"></div>
+                    <div class="color-palette" id="color-palette" aria-label="색상 선택">
+                        <button type="button" class="color-choice selected" style="background:#000000;" data-color="#000000" title="검정"></button>
+                        <button type="button" class="color-choice" style="background:#ffffff;" data-color="#ffffff" title="흰색"></button>
+                        <button type="button" class="color-choice" style="background:#ff0000;" data-color="#ff0000" title="빨강"></button>
+                        <button type="button" class="color-choice" style="background:#ff7a00;" data-color="#ff7a00" title="주황"></button>
+                        <button type="button" class="color-choice" style="background:#ffd400;" data-color="#ffd400" title="노랑"></button>
+                        <button type="button" class="color-choice" style="background:#22c55e;" data-color="#22c55e" title="초록"></button>
+                        <button type="button" class="color-choice" style="background:#00c2ff;" data-color="#00c2ff" title="하늘색"></button>
+                        <button type="button" class="color-choice" style="background:#2563eb;" data-color="#2563eb" title="파랑"></button>
+                        <button type="button" class="color-choice" style="background:#7c3aed;" data-color="#7c3aed" title="보라"></button>
+                        <button type="button" class="color-choice" style="background:#ec4899;" data-color="#ec4899" title="분홍"></button>
+                        <button type="button" class="color-choice" style="background:#92400e;" data-color="#92400e" title="갈색"></button>
+                        <button type="button" class="color-choice" style="background:#6b7280;" data-color="#6b7280" title="회색"></button>
+                    </div>
+                </div>
                 <label style="display:inline; width:auto; margin:0;">굵기:</label>
                 <input type="range" id="brush-size" min="1" max="30" value="3">
                 <span id="brush-size-text" style="min-width: 25px; font-weight: 700;">3</span>
@@ -838,6 +892,24 @@
             var opacityText = document.getElementById("brush-opacity-text");
             opacity.addEventListener("input", function() {
                 opacityText.innerText = opacity.value + "%";
+            });
+
+            // 브라우저 기본 색상 팝업 대신 그림판 밖에 항상 보이는 팔레트 사용
+            var colorInput = document.getElementById("brush-color");
+            var colorPreview = document.getElementById("color-preview");
+            var colorChoices = document.querySelectorAll(".color-choice");
+
+            colorChoices.forEach(function(button) {
+                button.addEventListener("click", function() {
+                    var color = button.getAttribute("data-color");
+                    colorInput.value = color;
+                    colorPreview.style.background = color;
+
+                    colorChoices.forEach(function(other) {
+                        other.classList.remove("selected");
+                    });
+                    button.classList.add("selected");
+                });
             });
         }
 
