@@ -398,10 +398,24 @@
             flex: 0 0 auto;
         }
 
+        /* 색상 버튼 바로 옆의 스포이드 */
         .color-eyedropper {
-            font-size: 20px;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            background: #fff;
+            font-size: 22px;
             line-height: 1;
-            cursor: default;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .color-eyedropper:hover,
+        .color-eyedropper.active {
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49,130,206,.16);
         }
 
         .color-hue {
@@ -761,13 +775,13 @@
                 <div class="color-picker-wrap">
                     <input type="hidden" id="brush-color" value="#000000">
                     <div id="color-preview" class="color-preview" style="background:#000000;" title="색상 선택"></div>
+                    <button type="button" id="color-eyedropper" class="color-eyedropper" title="스포이드 - 그림에서 색상 가져오기">💧</button>
                     <div id="custom-color-picker" class="custom-color-picker" aria-label="색상 선택">
                         <div id="color-sv" class="color-sv">
                             <div id="color-sv-pointer" class="color-sv-pointer" style="left:0%; top:100%;"></div>
                         </div>
                         <div class="color-picker-row">
                             <div id="color-current" class="color-current" style="background:#000000;"></div>
-                            <button type="button" id="color-eyedropper" class="color-eyedropper" title="스포이드 - 그림에서 색상 가져오기">💧</button>
                             <div id="color-hue" class="color-hue">
                                 <div id="color-hue-pointer" class="color-hue-pointer" style="left:0%;"></div>
                             </div>
@@ -1106,13 +1120,12 @@
                     e.preventDefault();
                     e.stopPropagation();
                     setEyedropper(!eyedropperActive);
-                    if (eyedropperActive) {
-                        picker.classList.remove("open");
-                    }
+                    // 스포이드를 켜면 색상창은 닫고 그림에서 바로 색을 찍을 수 있게 함
+                    if (eyedropperActive) picker.classList.remove("open");
                 });
             }
             document.addEventListener("pointerdown", function(e){
-                if (!picker.contains(e.target) && e.target !== preview) picker.classList.remove("open");
+                if (!picker.contains(e.target) && e.target !== preview && e.target !== eyedropper) picker.classList.remove("open");
             });
 
             updateColor("#000000", true);
