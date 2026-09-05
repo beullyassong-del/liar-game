@@ -625,13 +625,14 @@
             </div>
 
             <div class="canvas-controls">
-                <button type="button" id="pen-tool" class="secondary" style="width:auto; margin:0; padding:10px 14px;" onclick="setDrawTool('pen')">✏️ 펜</button>
-                <button type="button" id="eraser-tool" class="secondary" style="width:auto; margin:0; padding:10px 14px;" onclick="setDrawTool('eraser')">🧽 지우개</button>
                 <label style="display:inline; width:auto; margin:0;">색상:</label>
-                <input type="color" id="brush-color" value="#000000">
+                <input type="color" id="brush-color" value="#000000" title="붓 색상 선택">
                 <label style="display:inline; width:auto; margin:0;">굵기:</label>
                 <input type="range" id="brush-size" min="1" max="30" value="3">
                 <span id="brush-size-text" style="min-width: 25px; font-weight: 700;">3</span>
+                <label style="display:inline; width:auto; margin:0;">투명도:</label>
+                <input type="range" id="brush-opacity" min="10" max="100" value="100">
+                <span id="brush-opacity-text" style="min-width: 40px; font-weight: 700;">100%</span>
             </div>
 
             <div id="canvas-container">
@@ -786,7 +787,7 @@
             ctx = canvas.getContext("2d");
             setupCanvasEvents();
             setupBrushUI();
-            setDrawTool("pen");
+            
             checkLinkJoin();
             updateInkUI();
 
@@ -831,6 +832,12 @@
             var brushText = document.getElementById("brush-size-text");
             brushSize.addEventListener("input", function() {
                 brushText.innerText = brushSize.value;
+            });
+
+            var opacity = document.getElementById("brush-opacity");
+            var opacityText = document.getElementById("brush-opacity-text");
+            opacity.addEventListener("input", function() {
+                opacityText.innerText = opacity.value + "%";
             });
         }
 
@@ -1431,20 +1438,9 @@
            갈틱폰 스타일 그림 시스템
            - Pointer Events로 마우스/터치 통합
            - 부드러운 선 보간
-           - 펜 / 지우개
+           - 붓 색상 / 굵기 / 투명도
            - 기존 잉크/턴/네트워크 구조 유지
         ===================================================== */
-        var drawTool = "pen";
-        var activePointerId = null;
-
-        function setDrawTool(tool) {
-            drawTool = tool === "eraser" ? "eraser" : "pen";
-            var pen = document.getElementById("pen-tool");
-            var eraser = document.getElementById("eraser-tool");
-            if (pen) pen.style.opacity = drawTool === "pen" ? "1" : "0.55";
-            if (eraser) eraser.style.opacity = drawTool === "eraser" ? "1" : "0.55";
-        }
-
         function getCanvasPosition(e) {
             var rect = canvas.getBoundingClientRect();
             var scaleX = canvas.width / rect.width;
@@ -1462,11 +1458,10 @@
         }
 
         function getBrushStyle() {
-            var size = Number(document.getElementById("brush-size").value);
             return {
-                color: drawTool === "eraser" ? "#ffffff" : document.getElementById("brush-color").value,
-                size: drawTool === "eraser" ? Math.max(size * 3, 12) : size,
-                tool: drawTool
+                color: document.getElementById("brush-color").value,
+                size: Number(document.getElementById("brush-size").value),
+                opacity: Number(document.getElementById("brush-opacity").value) / 100
             };
         }
 
@@ -1479,7 +1474,7 @@
                 prevY: prev ? prev.y : pos.y,
                 color: style.color,
                 size: style.size,
-                tool: style.tool,
+                opacity: style.opacity,
                 type: type
             };
         }
@@ -1629,16 +1624,17 @@
             var prevY = typeof pt.prevY === "number" ? pt.prevY : (previousPoint ? previousPoint.y : pt.y);
 
             ctx.save();
+            ctx.globalCompositeOperation = "source-over";
+            ctx.globalAlpha = pt.opacity == null ? 1 : Math.max(0, Math.min(1, pt.opacity));
             ctx.strokeStyle = pt.color || "#000000";
+            ctx.fillStyle = pt.color || "#000000";
             ctx.lineWidth = Math.max(1, Number(pt.size) || 3);
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
-            ctx.globalCompositeOperation = pt.tool === "eraser" ? "destination-out" : "source-over";
 
             if (pt.type === "start" || (prevX === pt.x && prevY === pt.y)) {
                 ctx.beginPath();
                 ctx.arc(pt.x, pt.y, Math.max(0.5, ctx.lineWidth / 2), 0, Math.PI * 2);
-                ctx.fillStyle = pt.tool === "eraser" ? "rgba(0,0,0,1)" : pt.color;
                 ctx.fill();
             } else {
                 ctx.beginPath();
