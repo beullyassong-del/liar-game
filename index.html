@@ -625,15 +625,17 @@
             </div>
 
             <div class="canvas-controls">
+                <button type="button" id="pen-tool" class="secondary" style="width:auto; margin:0; padding:10px 14px;" onclick="setDrawTool('pen')">✏️ 펜</button>
+                <button type="button" id="eraser-tool" class="secondary" style="width:auto; margin:0; padding:10px 14px;" onclick="setDrawTool('eraser')">🧽 지우개</button>
                 <label style="display:inline; width:auto; margin:0;">색상:</label>
                 <input type="color" id="brush-color" value="#000000">
                 <label style="display:inline; width:auto; margin:0;">굵기:</label>
-                <input type="range" id="brush-size" min="1" max="20" value="3">
+                <input type="range" id="brush-size" min="1" max="30" value="3">
                 <span id="brush-size-text" style="min-width: 25px; font-weight: 700;">3</span>
             </div>
 
             <div id="canvas-container">
-                <canvas id="game-canvas" width="650" height="550"></canvas>
+                <canvas id="game-canvas" width="820" height="500"></canvas>
             </div>
 
             <div class="draw-actions" id="my-turn-controls" style="display: none;">
@@ -784,6 +786,7 @@
             ctx = canvas.getContext("2d");
             setupCanvasEvents();
             setupBrushUI();
+            setDrawTool("pen");
             checkLinkJoin();
             updateInkUI();
 
@@ -1425,17 +1428,30 @@
         }
 
         /* =====================================================
-           캔버스 위치
+           갈틱폰 스타일 그림 시스템
+           - Pointer Events로 마우스/터치 통합
+           - 부드러운 선 보간
+           - 펜 / 지우개
+           - 기존 잉크/턴/네트워크 구조 유지
         ===================================================== */
+        var drawTool = "pen";
+        var activePointerId = null;
+
+        function setDrawTool(tool) {
+            drawTool = tool === "eraser" ? "eraser" : "pen";
+            var pen = document.getElementById("pen-tool");
+            var eraser = document.getElementById("eraser-tool");
+            if (pen) pen.style.opacity = drawTool === "pen" ? "1" : "0.55";
+            if (eraser) eraser.style.opacity = drawTool === "eraser" ? "1" : "0.55";
+        }
+
         function getCanvasPosition(e) {
             var rect = canvas.getBoundingClientRect();
-            var clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            var clientY = e.touches ? e.touches[0].clientY : e.clientY;
             var scaleX = canvas.width / rect.width;
             var scaleY = canvas.height / rect.height;
             return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
+                x: Math.max(0, Math.min(canvas.width, (e.clientX - rect.left) * scaleX)),
+                y: Math.max(0, Math.min(canvas.height, (e.clientY - rect.top) * scaleY))
             };
         }
 
@@ -1445,78 +1461,131 @@
             alert("🖊️ 잉크를 다 썼습니다!");
         }
 
-        /* =====================================================
-           그림 시작 / 이동 / 종료
-        ===================================================== */
+        function getBrushStyle() {
+            var size = Number(document.getElementById("brush-size").value);
+            return {
+                color: drawTool === "eraser" ? "#ffffff" : document.getElementById("brush-color").value,
+                size: drawTool === "eraser" ? Math.max(size * 3, 12) : size,
+                tool: drawTool
+            };
+        }
+
+        function makePoint(pos, type, prev) {
+            var style = getBrushStyle();
+            return {
+                x: pos.x,
+                y: pos.y,
+                prevX: prev ? prev.x : pos.x,
+                prevY: prev ? prev.y : pos.y,
+                color: style.color,
+                size: style.size,
+                tool: style.tool,
+                type: type
+            };
+        }
+
         function startDraw(e) {
             if (playerOrder[currentTurnIndex] !== myName) return;
             if (ink <= 0) {
                 showInkEmptyMessage();
                 return;
             }
+
+            e.preventDefault();
+            activePointerId = e.pointerId;
+            try { canvas.setPointerCapture(activePointerId); } catch (err) {}
+
             isDrawing = true;
             var pos = getCanvasPosition(e);
             currentStroke = [];
-            var brushSize = Number(document.getElementById("brush-size").value);
-            var color = document.getElementById("brush-color").value;
-            var point = { x: pos.x, y: pos.y, color: color, size: brushSize, type: "start" };
+
+            var point = makePoint(pos, "start", null);
             currentStroke.push(point);
             drawSegment(point);
             sendData({ type: "DRAW_LIVE", strokeData: point, sender: myName });
-            useInk(2);
+
+            // 갈틱폰처럼 클릭만 해도 점이 찍히게 함
+            drawDot(point);
+            useInk(Math.max(1, Number(point.size) * 0.35));
         }
 
         function moveDraw(e) {
-            if (!isDrawing) return;
+            if (!isDrawing || e.pointerId !== activePointerId) return;
+            e.preventDefault();
             if (ink <= 0) {
-                isDrawing = false;
+                stopDraw(e);
                 showInkEmptyMessage();
                 return;
             }
+
             var pos = getCanvasPosition(e);
             if (currentStroke.length === 0) return;
+
             var last = currentStroke[currentStroke.length - 1];
             var dx = pos.x - last.x;
             var dy = pos.y - last.y;
             var distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < 1) return;
-            var brushSize = Number(document.getElementById("brush-size").value);
-            var color = document.getElementById("brush-color").value;
-            var inkCost = distance * (0.12 + brushSize * 0.02);
+            if (distance < 0.5) return;
 
-            if (inkCost > ink) {
-                var ratio = ink / inkCost;
-                ratio = Math.max(0, Math.min(1, ratio));
-                var limitedPoint = {
-                    x: last.x + dx * ratio,
-                    y: last.y + dy * ratio,
-                    color: color,
-                    size: brushSize,
-                    type: "move"
+            // 한 번에 너무 긴 선이 생기지 않도록 중간점을 넣어 부드럽게 연결
+            var step = Math.max(2, Number(document.getElementById("brush-size").value) * 0.75);
+            var count = Math.max(1, Math.ceil(distance / step));
+            var prev = { x: last.x, y: last.y };
+
+            for (var i = 1; i <= count; i++) {
+                var t = i / count;
+                var p = {
+                    x: last.x + dx * t,
+                    y: last.y + dy * t
                 };
-                currentStroke.push(limitedPoint);
-                drawSegment(limitedPoint);
-                sendData({ type: "DRAW_LIVE", strokeData: limitedPoint, sender: myName });
-                ink = 0;
-                updateInkUI();
-                isDrawing = false;
-                if (currentStroke.length > 0) {
-                    myTurnStrokes.push(currentStroke);
-                    currentStroke = [];
-                }
-                return;
-            }
+                var point = makePoint(p, "move", prev);
+                var segmentDistance = Math.sqrt(
+                    (p.x - prev.x) * (p.x - prev.x) +
+                    (p.y - prev.y) * (p.y - prev.y)
+                );
+                var inkCost = segmentDistance * (0.12 + Number(point.size) * 0.018);
 
-            var point = { x: pos.x, y: pos.y, color: color, size: brushSize, type: "move" };
-            currentStroke.push(point);
-            drawSegment(point);
-            sendData({ type: "DRAW_LIVE", strokeData: point, sender: myName });
-            useInk(inkCost);
+                if (inkCost > ink) {
+                    var ratio = ink <= 0 ? 0 : ink / Math.max(inkCost, 0.0001);
+                    ratio = Math.max(0, Math.min(1, ratio));
+                    var limited = {
+                        x: prev.x + (p.x - prev.x) * ratio,
+                        y: prev.y + (p.y - prev.y) * ratio
+                    };
+                    point = makePoint(limited, "move", prev);
+                    currentStroke.push(point);
+                    drawSegment(point);
+                    sendData({ type: "DRAW_LIVE", strokeData: point, sender: myName });
+                    ink = 0;
+                    updateInkUI();
+                    stopDraw(e);
+                    showInkEmptyMessage();
+                    return;
+                }
+
+                currentStroke.push(point);
+                drawSegment(point);
+                sendData({ type: "DRAW_LIVE", strokeData: point, sender: myName });
+                useInk(inkCost);
+                prev = p;
+
+                if (ink <= 0) {
+                    stopDraw(e);
+                    showInkEmptyMessage();
+                    return;
+                }
+            }
         }
 
-        function stopDraw() {
+        function stopDraw(e) {
             if (!isDrawing) return;
+            if (e && activePointerId !== null && e.pointerId !== activePointerId) return;
             isDrawing = false;
+            try {
+                if (activePointerId !== null) canvas.releasePointerCapture(activePointerId);
+            } catch (err) {}
+            activePointerId = null;
+
             if (currentStroke.length > 0) {
                 myTurnStrokes.push(currentStroke);
                 currentStroke = [];
@@ -1545,18 +1614,39 @@
             }
         }
 
-        function drawSegment(pt) {
-            ctx.strokeStyle = pt.color;
-            ctx.lineWidth = Number(pt.size);
+        function drawDot(pt) {
+            ctx.save();
+            ctx.fillStyle = pt.color;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, Math.max(0.5, Number(pt.size) / 2), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawSegment(pt, previousPoint) {
+            if (!pt) return;
+            var prevX = typeof pt.prevX === "number" ? pt.prevX : (previousPoint ? previousPoint.x : pt.x);
+            var prevY = typeof pt.prevY === "number" ? pt.prevY : (previousPoint ? previousPoint.y : pt.y);
+
+            ctx.save();
+            ctx.strokeStyle = pt.color || "#000000";
+            ctx.lineWidth = Math.max(1, Number(pt.size) || 3);
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
-            if (pt.type === "start") {
+            ctx.globalCompositeOperation = pt.tool === "eraser" ? "destination-out" : "source-over";
+
+            if (pt.type === "start" || (prevX === pt.x && prevY === pt.y)) {
                 ctx.beginPath();
-                ctx.moveTo(pt.x, pt.y);
+                ctx.arc(pt.x, pt.y, Math.max(0.5, ctx.lineWidth / 2), 0, Math.PI * 2);
+                ctx.fillStyle = pt.tool === "eraser" ? "rgba(0,0,0,1)" : pt.color;
+                ctx.fill();
             } else {
+                ctx.beginPath();
+                ctx.moveTo(prevX, prevY);
                 ctx.lineTo(pt.x, pt.y);
                 ctx.stroke();
             }
+            ctx.restore();
         }
 
         function drawLivePoint(pt) {
@@ -1577,7 +1667,7 @@
 
         function finishMyTurn() {
             if (playerOrder[currentTurnIndex] !== myName) return;
-            if (isDrawing) isDrawing = false;
+            if (isDrawing) stopDraw();
             if (currentStroke.length > 0) {
                 myTurnStrokes.push(currentStroke);
                 currentStroke = [];
@@ -1601,30 +1691,26 @@
         }
 
         function setupCanvasEvents() {
-            canvas.addEventListener("mousedown", function(e) { startDraw(e); });
-            canvas.addEventListener("mousemove", function(e) { moveDraw(e); });
-            canvas.addEventListener("mouseup", function() { stopDraw(); });
-            canvas.addEventListener("mouseleave", function() { stopDraw(); });
-            canvas.addEventListener("touchstart", function(e) {
-                e.preventDefault();
-                startDraw(e);
-            }, { passive: false });
-            canvas.addEventListener("touchmove", function(e) {
-                e.preventDefault();
-                moveDraw(e);
-            }, { passive: false });
-            canvas.addEventListener("touchend", function(e) {
-                e.preventDefault();
-                stopDraw();
-            }, { passive: false });
+            canvas.style.touchAction = "none";
+            canvas.addEventListener("pointerdown", startDraw);
+            canvas.addEventListener("pointermove", moveDraw);
+            canvas.addEventListener("pointerup", stopDraw);
+            canvas.addEventListener("pointercancel", stopDraw);
+            canvas.addEventListener("pointerleave", function(e) {
+                // Pointer capture가 유지되는 동안에는 계속 그릴 수 있음
+                if (!isDrawing) return;
+            });
         }
 
         function redrawCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (var i = 0; i < turnsHistory.length; i++) {
                 var stroke = turnsHistory[i].path;
+                var previous = null;
                 for (var j = 0; j < stroke.length; j++) {
-                    drawSegment(stroke[j]);
+                    var pt = stroke[j];
+                    drawSegment(pt, previous);
+                    previous = pt;
                 }
             }
         }
