@@ -767,7 +767,7 @@
                         </div>
                         <div class="color-picker-row">
                             <div id="color-current" class="color-current" style="background:#000000;"></div>
-                            <div class="color-eyedropper">🖌️</div>
+                            <button type="button" id="color-eyedropper" class="color-eyedropper" title="스포이드 - 그림에서 색상 가져오기">💧</button>
                             <div id="color-hue" class="color-hue">
                                 <div id="color-hue-pointer" class="color-hue-pointer" style="left:0%;"></div>
                             </div>
@@ -891,6 +891,7 @@
         var isDrawing = false;
         var currentStroke = [];
         var myTurnStrokes = [];
+        var eyedropperActive = false;
 
         /* =====================================================
            잉크
@@ -1041,6 +1042,7 @@
             var gInput = document.getElementById("color-g");
             var bInput = document.getElementById("color-b");
             var close = document.getElementById("color-picker-close");
+            var eyedropper = document.getElementById("color-eyedropper");
             var hsv = {h: 0, s: 0, v: 0};
 
             function updateColor(hex, updateHsv) {
@@ -1055,6 +1057,10 @@
                 svPointer.style.top = ((1 - hsv.v) * 100) + "%";
                 huePointer.style.left = (hsv.h * 100) + "%";
             }
+
+            window.updateCustomPickedColor = function(hex) {
+                updateColor(hex, true);
+            };
 
             function pickSV(e) {
                 var rect = sv.getBoundingClientRect();
@@ -1095,11 +1101,70 @@
                 picker.classList.toggle("open");
             });
             close.addEventListener("click", function(){ picker.classList.remove("open"); });
+            if (eyedropper) {
+                eyedropper.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEyedropper(!eyedropperActive);
+                    if (eyedropperActive) {
+                        picker.classList.remove("open");
+                    }
+                });
+            }
             document.addEventListener("pointerdown", function(e){
                 if (!picker.contains(e.target) && e.target !== preview) picker.classList.remove("open");
             });
 
             updateColor("#000000", true);
+        }
+
+        function setEyedropper(active) {
+            eyedropperActive = !!active;
+            var btn = document.getElementById("color-eyedropper");
+            if (btn) btn.classList.toggle("active", eyedropperActive);
+            if (canvas) canvas.style.cursor = eyedropperActive ? "crosshair" : "crosshair";
+        }
+
+        function pickColorFromCanvas(e) {
+            if (!canvas || !ctx) return false;
+            var pos = getCanvasPosition(e);
+            var x = Math.max(0, Math.min(canvas.width - 1, Math.floor(pos.x)));
+            var y = Math.max(0, Math.min(canvas.height - 1, Math.floor(pos.y)));
+
+            try {
+                var pixel = ctx.getImageData(x, y, 1, 1).data;
+                // 캔버스가 흰색 배경이므로 투명 픽셀은 흰색으로 처리
+                var alpha = pixel[3] / 255;
+                var r = Math.round(pixel[0] * alpha + 255 * (1 - alpha));
+                var g = Math.round(pixel[1] * alpha + 255 * (1 - alpha));
+                var b = Math.round(pixel[2] * alpha + 255 * (1 - alpha));
+                var hex = "#" + [r,g,b].map(function(v){
+                    return v.toString(16).padStart(2, "0");
+                }).join("");
+
+                var colorInput = document.getElementById("brush-color");
+                if (colorInput) colorInput.value = hex;
+
+                // 커스텀 색상 선택기의 표시값도 함께 변경
+                if (typeof window.updateCustomPickedColor === "function") {
+                    window.updateCustomPickedColor(hex);
+                } else {
+                    var preview = document.getElementById("color-preview");
+                    var current = document.getElementById("color-current");
+                    if (preview) preview.style.background = hex;
+                    if (current) current.style.background = hex;
+                    var ri = document.getElementById("color-r");
+                    var gi = document.getElementById("color-g");
+                    var bi = document.getElementById("color-b");
+                    if (ri) ri.value = r;
+                    if (gi) gi.value = g;
+                    if (bi) bi.value = b;
+                }
+                return true;
+            } catch (err) {
+                console.error("스포이드 색상 추출 실패:", err);
+                return false;
+            }
         }
 
         function setupBrushUI() {
@@ -1757,6 +1822,15 @@
         }
 
         function startDraw(e) {
+            if (eyedropperActive) {
+                e.preventDefault();
+                if (pickColorFromCanvas(e)) {
+                    setEyedropper(false);
+                    var picker = document.getElementById("custom-color-picker");
+                    if (picker) picker.classList.add("open");
+                }
+                return;
+            }
             if (playerOrder[currentTurnIndex] !== myName) return;
             if (ink <= 0) {
                 showInkEmptyMessage();
