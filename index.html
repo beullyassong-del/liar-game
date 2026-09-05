@@ -655,6 +655,9 @@
             <h2>방 만들기</h2>
             <label>닉네임</label>
             <input type="text" id="create-name" maxlength="15" placeholder="닉네임을 입력하세요">
+            <label>🖊️ 잉크량</label>
+            <input type="number" id="create-ink" min="1" max="9999" value="200" placeholder="잉크량을 입력하세요">
+            <p style="font-size:13px; color:#718096; margin-top:-6px;">방을 만들 때 사용할 잉크량입니다. 기본값은 200입니다.</p>
             <button onclick="createRoom()">방 생성하기</button>
             <button onclick="showScreen('screen-main')" class="secondary">뒤로가기</button>
         </div>
@@ -875,7 +878,8 @@
         var gameSettings = {
             category: "동물",
             mode: "일반 모드",
-            liarCount: 1
+            liarCount: 1,
+            inkAmount: 200
         };
 
         /* =====================================================
@@ -910,7 +914,7 @@
         /* =====================================================
            잉크
         ===================================================== */
-        var MAX_INK = 300;
+        var MAX_INK = 200;
         var ink = MAX_INK;
         var inkEmptyAlertShown = false;
 
@@ -1235,6 +1239,15 @@
                 alert("닉네임을 입력해주세요!");
                 return;
             }
+            var inkInput = Number(document.getElementById("create-ink").value);
+            if (!Number.isFinite(inkInput) || inkInput < 1) {
+                inkInput = 200;
+            }
+            inkInput = Math.floor(Math.min(9999, inkInput));
+            gameSettings.inkAmount = inkInput;
+            MAX_INK = inkInput;
+            ink = MAX_INK;
+
             myName = name;
             roomCode = getRandomCode();
             isHost = true;
@@ -1468,6 +1481,9 @@
             if (data.type === "SYNC") {
                 playersMap = data.players;
                 gameSettings = data.settings;
+                MAX_INK = Number(gameSettings.inkAmount || 200);
+                if (!Number.isFinite(MAX_INK) || MAX_INK < 1) MAX_INK = 200;
+                ink = MAX_INK;
                 applySettingsUI();
                 renderPlayers();
                 return;
@@ -1479,6 +1495,9 @@
                 currentSpies = data.spies || [];
                 currentKeyword = data.keyword;
                 fakeKeyword = data.fakeKeyword || "";
+                MAX_INK = Number(data.inkAmount || (gameSettings && gameSettings.inkAmount) || 200);
+                if (!Number.isFinite(MAX_INK) || MAX_INK < 1) MAX_INK = 200;
+                ink = MAX_INK;
                 handleGameStart(data.mode);
                 return;
             }
@@ -1657,7 +1676,8 @@
                 keyword: selectedKeyword,
                 fakeKeyword: selectedFakeKeyword,
                 mode: gameSettings.mode,
-                order: playerOrder
+                order: playerOrder,
+                inkAmount: gameSettings.inkAmount || 200
             };
             broadcastData(startPayload);
             handleNetworkData(startPayload);
